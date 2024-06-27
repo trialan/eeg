@@ -61,7 +61,7 @@ def plot_mesh(mesh, points):
 
 
 def plot_basis_functions(dmesh, coords):
-    """ Plot 9 random ones """
+    """ Plot 9 first ones """
     basisfuncs = compute_scalp_eigenfunctions(coords)
     figsb1, axes1 = plt.subplots(nrows=3, ncols=3, figsize=(8, 12),
                                  subplot_kw={'projection': '3d'})

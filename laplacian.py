@@ -14,39 +14,34 @@ from eeg.main import *
     https://spharapy.readthedocs.io/en/latest/auto_examples/plot_02_sphara_basis_eeg.html
 """
 
+
 def compute_scalp_eigenfunctions(coords):
-    dmesh = create_triangular_mesh(coords)
+    dmesh = create_triangular_dmesh(coords)
     mesh_eeg = trimesh.TriMesh(dmesh.convex_hull, dmesh.points)
     sphara_basis_unit = sb.SpharaBasis(mesh_eeg, 'unit')
     basis_functions_unit, natural_frequencies_unit = sphara_basis_unit.basis()
     return basis_functions_unit
 
 
-def get_electrode_coordinates():
+def get_electrode_coordinates(subject=1):
     """ Get raw EEGMI data from website or locally if already downloaded """
-    raw_fnames = eegbci.load_data(1, runs) #assume same coords for all subjects
+    raw_fnames = eegbci.load_data(subject, runs) #all subjects have same coords
     raw = concatenate_raws([read_raw_edf(f, preload=True) for f in raw_fnames])
     eegbci.standardize(raw)  # set channel names
     montage = make_standard_montage("standard_1020")
     raw.set_montage(montage)
+    raw.set_eeg_reference(projection=True)
+    raw.filter(7.0, 30.0, fir_design="firwin", skip_by_annotation="edge")
     montage_positions = montage.get_positions()
     xyz_coords = montage_positions['ch_pos']
     points = np.array(list(xyz_coords.values()))
     return points
 
 
-def create_triangular_mesh(xyz_coords):
+def create_triangular_dmesh(xyz_coords):
     """  Create a mesh using the Delaunay triangulation """
     mesh = Delaunay(xyz_coords)
     return mesh
-
-
-def compute_cotangent_matrix():
-    pass
-
-
-def compute_area_matrix():
-    pass
 
 
 def plot_mesh(mesh, points):
@@ -69,10 +64,10 @@ def plot_basis_functions(dmesh, coords):
     """ Plot 9 random ones """
     basisfuncs = compute_scalp_eigenfunctions(coords)
     figsb1, axes1 = plt.subplots(nrows=3, ncols=3, figsize=(8, 12),
-                                                              subplot_kw={'projection': '3d'})
+                                 subplot_kw={'projection': '3d'})
 
     for i in range(np.size(axes1)):
-        #colors = np.mean(basisfuncs[dmesh.convex_hull, i + 0], axis=1)
+        colors = np.mean(basisfuncs[dmesh.convex_hull, i + 0], axis=1)
         ax = axes1.flat[i]
         ax.set_xlabel('x')
         ax.set_ylabel('y')
@@ -80,10 +75,10 @@ def plot_basis_functions(dmesh, coords):
         ax.view_init(elev=60., azim=80.)
         ax.set_aspect('auto')
         trisurfplot = ax.plot_trisurf(dmesh.points[:, 0], dmesh.points[:, 1],
-        dmesh.points[:, 2], triangles=dmesh.convex_hull,
-        cmap=plt.cm.bwr,
-        edgecolor='white', linewidth=0.)
-        #trisurfplot.set_array(colors)
+            dmesh.points[:, 2], triangles=dmesh.convex_hull,
+            cmap=plt.cm.bwr,
+            edgecolor='white', linewidth=0.)
+        trisurfplot.set_array(colors)
         trisurfplot.set_clim(-0.15, 0.15)
 
     cbar = figsb1.colorbar(trisurfplot, ax=axes1.ravel().tolist(), shrink=0.85,
@@ -97,5 +92,5 @@ def plot_basis_functions(dmesh, coords):
 
 if __name__ == '__main__':
     coords = get_electrode_coordinates()
-    dmesh = create_triangular_mesh(coords)
+    dmesh = create_triangular_dmesh(coords)
     plot_basis_functions(dmesh, coords)

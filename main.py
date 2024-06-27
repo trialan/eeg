@@ -6,6 +6,7 @@ from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.decomposition import PCA
 from sklearn.model_selection import ShuffleSplit, cross_val_score
 from sklearn.pipeline import Pipeline
+from xgboost import XGBClassifier
 
 import pyriemann
 
@@ -35,7 +36,7 @@ runs = [6, 10, 14]
 def get_data():
     Xs = []
     ys = []
-    for subject in range(1, 3+1):
+    for subject in range(1, 109+1):
         X, y = get_formatted_data(subject)
         Xs.extend(X)
         ys.extend(y)
@@ -71,32 +72,17 @@ def get_raw_data(subject):
     raw_fnames = eegbci.load_data(subject, runs)
     raw = concatenate_raws([read_raw_edf(f, preload=True) for f in raw_fnames])
     eegbci.standardize(raw)  # set channel names
-    montage = make_standard_montage("standard_1005")
+    montage = make_standard_montage("standard_1020") #or 1005?
     raw.set_montage(montage)
     raw.annotations.rename(dict(T1="hands", T2="feet"))
     raw.set_eeg_reference(projection=True)
     return raw
 
 
-def assemble_classifer_PCACSPLDA(n_components):
-    lda = LinearDiscriminantAnalysis()
-    csp = CSP(n_components=n_components, reg=None, log=True, norm_trace=False)
-    pca = UnsupervisedSpatialFilter(PCA(n_components), average=False)
-    clf = Pipeline([("PCA", pca), ("CSP", csp), ("LDA", lda)])
-    return clf
-
-
-def assemble_classifer_CSPLDA(n_components):
-    lda = LinearDiscriminantAnalysis()
-    csp = CSP(n_components=n_components, reg=None, log=True, norm_trace=False)
-    clf = Pipeline([("CSP", csp), ("LDA", lda)])
-    return clf
-
-
-def assemble_classifer_PCAFgMDM(n_components):
-    pca = UnsupervisedSpatialFilter(PCA(n_components), average=False)
-    FgMDM = pyriemann.classification.FgMDM()
-    clf = Pipeline([("PCA", pca), ("FgMDM", FgMDM)])
+def assemble_classifier_PCA_XGB(n_components):
+    pca = PCA(n_components)
+    xgb = XGBClassifier()
+    clf = Pipeline([("PCA", pca), ("XGB", xgb)])
     return clf
 
 
@@ -112,4 +98,15 @@ if __name__ == '__main__':
     X, y = get_data()
     cv = ShuffleSplit(5, test_size=0.2, random_state=42)
     component_numbers = list(range(1, 50, 5))
+
+    print("PCA+XGB")
+    X_rs = X.reshape(X.shape[0], X.shape[1]*X.shape[2])
+    scores = []
+    for n_components in tqdm(component_numbers):
+        clf = assemble_classifier_PCA_XGB(n_components)
+        score = results(clf, X_rs, y, cv)
+        scores.append(score)
+    plt.plot(component_numbers, scores, marker='o', linestyle='-', label='PCA+XGB')
+    plt.show()
+
 

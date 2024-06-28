@@ -36,7 +36,7 @@ def assemble_classifer_PCAFgMDM(n_components):
 if __name__ == '__main__':
     X, y = get_data()
     cv = ShuffleSplit(5, test_size=0.2, random_state=42)
-    component_numbers = list(range(1, 50, 5))
+    component_numbers = list(range(1, 50))
 
     print("CSP+LDA")
     scores = []

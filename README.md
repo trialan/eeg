@@ -6,6 +6,8 @@ Analysis of electroencephalogram data from [physionet](https://physionet.org/abo
 
 Same ranking, almost same top score, different shape of curves. Not 100% sure why, their methods were a little un-clear so I made assumptions about what they didn which can definitely be changed. Above is ours, below is theirs.
 
-![eegbci_1020_montage](https://github.com/trialan/eeg/assets/16582240/88a5d54c-4d3a-4e8a-bce9-087400fb84dd)
+
+![detailed_fig3(a)](https://github.com/trialan/eeg/assets/16582240/f2e96cb9-5b8c-46f1-979c-815ffec9cdb2)
+
 
 ![Their version:](https://github.com/trialan/eeg/assets/16582240/89a80153-5df3-4abc-8db3-b94622b26080)

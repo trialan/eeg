@@ -7,25 +7,44 @@ import spharapy.spharabasis as sb
 import spharapy.datasets as sd
 import random
 import matplotlib.pyplot as plt
+from sklearn.base import BaseEstimator, TransformerMixin
 
 from eeg.data import *
 
 """
-    Based on the spharapy package, please note that Delaunay "triangulation" of
-    XYZ coords doesn't give triangles, but tetrahedrons. Hence dmesh.convex_hull.
+    Based on the spharapy package. Read the tutorial below.
 
     https://spharapy.readthedocs.io/en/latest/auto_examples/plot_02_sphara_basis_eeg.html
 """
 
 
-def compute_scalp_eigenmodes(mesh):
+def compute_scalp_eigenvectors(mesh):
     sphara_basis_unit = sb.SpharaBasis(mesh, 'inv_euclidean')
-    eigenmodes, eigenvals = sphara_basis_unit.basis()
-    return eigenmodes
+    eigenvectors, eigenvals = sphara_basis_unit.basis()
+    return eigenvectors, eigenvals
+
+
+class ED(BaseEstimator, TransformerMixin):
+    """ This is like sklearn's PCA class, but for Eigen-decomposition (ED). """
+    def __init__(self, n_components, eigenvectors):
+        self.n_components = n_components
+        self.eigenvectors = eigenvectors
+
+    def fit(self, X, y=None):
+        if self.eigenvectors is None:
+            raise ValueError("Eigenvectors are not set.")
+        return self
+
+    def transform(self, X):
+        n_channels, n_times = X.shape
+        selected_eigenvectors = self.eigenvectors[:, :self.n_components]
+        X_transformed = np.dot(X, selected_eigenvectors)
+        return X_transformed
 
 
 def get_electrode_coordinates(subject=1):
-    """ Get raw EEGMI data from website or locally if already downloaded """
+    """ Get raw EEGMI data from website or locally if already downloaded.
+        Filter only EEG channels to get 64 as we expect from Physionet data """
     raw_fnames = eegbci.load_data(subject, runs) #all subjects have same coords
     raw = concatenate_raws([read_raw_edf(f, preload=True) for f in raw_fnames])
     eegbci.standardize(raw)  # set channel names
@@ -33,9 +52,16 @@ def get_electrode_coordinates(subject=1):
     raw.set_montage(montage)
     raw.set_eeg_reference(projection=True)
     raw.filter(7.0, 30.0, fir_design="firwin", skip_by_annotation="edge")
+
+    # Pick only EEG channels
+    picks = pick_types(raw.info, meg=False, eeg=True, stim=False, eog=False, exclude="bads")
+    channel_names = [raw.ch_names[pick] for pick in picks]
+
+    # Get positions of the selected channels
     montage_positions = montage.get_positions()
     xyz_coords = montage_positions['ch_pos']
-    points = np.array(list(xyz_coords.values()))
+    points = np.array([xyz_coords[ch_name] for ch_name in channel_names])
+
     return points
 
 
@@ -97,12 +123,12 @@ def plot_mesh(mesh):
 def plot_basis_functions(mesh):
     vertices = np.array(mesh.vertlist)
     triangles = np.array(mesh.trilist)
-    eigenmodes = compute_scalp_eigenmodes(mesh)
+    eigenvectors = compute_scalp_eigenvectors(mesh)
 
     figsb1, axes1 = plt.subplots(nrows=7, ncols=7, figsize=(8, 12),
                                  subplot_kw={'projection': '3d'})
     for i in range(np.size(axes1)):
-        colors = np.mean(eigenmodes[triangles, i + 0], axis=1)
+        colors = np.mean(eigenvectors[triangles, i + 0], axis=1)
         ax = axes1.flat[i]
         ax.set_xlabel('x')
         ax.set_ylabel('y')
@@ -127,6 +153,7 @@ def plot_basis_functions(mesh):
 if __name__ == '__main__':
     xyz_coords = get_electrode_coordinates()
     mesh = create_triangular_dmesh(xyz_coords)
-    plot_mesh(mesh)
-    plot_basis_functions(mesh)
+    eigenvectors = compute_scalp_eigenvectors(mesh)
+    #plot_mesh(mesh)
+    #plot_basis_functions(mesh)
 

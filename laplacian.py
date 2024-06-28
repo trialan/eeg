@@ -16,11 +16,10 @@ from eeg.main import *
 """
 
 
-def compute_scalp_eigenfunctions(coords):
-    mesh_eeg = create_triangular_dmesh(coords)
-    sphara_basis_unit = sb.SpharaBasis(mesh_eeg, 'unit')
-    basis_functions_unit, natural_frequencies_unit = sphara_basis_unit.basis()
-    return basis_functions_unit
+def compute_scalp_eigenmodes(mesh):
+    sphara_basis_unit = sb.SpharaBasis(mesh, 'inv_euclidean')
+    eigenmodes, eigenvals = sphara_basis_unit.basis()
+    return eigenmodes
 
 
 def get_electrode_coordinates(subject=1):
@@ -41,9 +40,9 @@ def get_electrode_coordinates(subject=1):
 def create_triangular_dmesh(xyz_coords):
     """  Create a mesh using the Delaunay triangulation """
     mesh = Delaunay(xyz_coords)
-    mesh_eeg = trimesh.TriMesh(mesh.convex_hull, mesh.points)
-    mesh_eeg = remove_bottom_of_the_mesh(mesh_eeg)
-    return mesh_eeg
+    mesh = trimesh.TriMesh(mesh.convex_hull, mesh.points)
+    mesh = remove_bottom_of_the_mesh(mesh)
+    return mesh
 
 
 def distance(p1, p2):
@@ -54,10 +53,10 @@ def distance(p1, p2):
     return distance
 
 
-def length_of_longest_edge(triangle, vertlist):
-    p1 = vertlist[triangle[0]]
-    p2 = vertlist[triangle[1]]
-    p3 = vertlist[triangle[2]]
+def length_of_longest_edge(triangle, vertices):
+    p1 = vertices[triangle[0]]
+    p2 = vertices[triangle[1]]
+    p3 = vertices[triangle[2]]
     el1 = distance(p1, p2)
     el2 = distance(p1, p3)
     el3 = distance(p2, p3)
@@ -67,18 +66,17 @@ def length_of_longest_edge(triangle, vertlist):
 def remove_bottom_of_the_mesh(mesh, N=6):
     """ Visual inspection reveals that the bottom triangles we want to be rid
         of have the longest edgs. So we remove the N triangles with longest edge """
-    le =  [length_of_longest_edge(t, mesh._vertlist) for t in mesh._trilist]
+    le =  [length_of_longest_edge(t, mesh._vertices) for t in mesh._triangles]
     ixs = np.argsort(le)[::-1][:N]
-    ntrilist = [mesh._trilist[ix] for ix in range(len(mesh._trilist)) if ix not in ixs]
-    mesh._trilist = np.array(ntrilist)
+    ntriangles = [mesh._triangles[ix] for ix in range(len(mesh._triangles)) if ix not in ixs]
+    mesh._triangles = np.array(ntriangles)
     return mesh
 
 
 def plot_mesh(mesh):
     """ Expects a sphara TriMesh """
-    vertlist = np.array(mesh._vertlist)
-    trilist = np.array(mesh._trilist)
-
+    vertices = np.array(mesh._vertices)
+    triangles = np.array(mesh._triangles)
     fig = plt.figure()
     fig.subplots_adjust(left=0.02, right=0.98, top=0.98, bottom=0.02)
     ax = fig.add_subplot(projection='3d')
@@ -88,31 +86,29 @@ def plot_mesh(mesh):
     ax.set_title('The triangulated EEG sensor setup')
     ax.view_init(elev=20., azim=80.)
     ax.set_aspect('auto')
-    ax.plot_trisurf(vertlist[:, 0], vertlist[:, 1], vertlist[:, 2],
-                    triangles=trilist, color='lightblue', edgecolor='black',
+    ax.plot_trisurf(vertices[:, 0], vertices[:, 1], vertices[:, 2],
+                    triangles=triangles, color='lightblue', edgecolor='black',
                     linewidth=0.5, shade=True, alpha=1)
     plt.show()
 
 
-def plot_basis_functions(mesh_eeg):
-    vertlist = np.array(mesh_eeg._vertlist)
-    trilist = np.array(mesh_eeg._trilist)
-
-    sphara_basis_unit = sb.SpharaBasis(mesh_eeg, 'unit')
-    basis_functions_unit, natural_frequencies_unit = sphara_basis_unit.basis()
+def plot_basis_functions(mesh):
+    vertices = np.array(mesh._vertices)
+    triangles = np.array(mesh._triangles)
+    eigenmodes = compute_scalp_eigenmodes(mesh)
 
     figsb1, axes1 = plt.subplots(nrows=7, ncols=7, figsize=(8, 12),
                                  subplot_kw={'projection': '3d'})
     for i in range(np.size(axes1)):
-        colors = np.mean(basis_functions_unit[trilist, i + 0], axis=1)
+        colors = np.mean(eigenmodes[triangles, i + 0], axis=1)
         ax = axes1.flat[i]
         ax.set_xlabel('x')
         ax.set_ylabel('y')
         ax.set_zlabel('z')
         ax.view_init(elev=60., azim=80.)
         ax.set_aspect('auto')
-        trisurfplot = ax.plot_trisurf(vertlist[:, 0], vertlist[:, 1],
-                                      vertlist[:, 2], triangles=trilist,
+        trisurfplot = ax.plot_trisurf(vertices[:, 0], vertices[:, 1],
+                                      vertices[:, 2], triangles=triangles,
                                       cmap=plt.cm.bwr,
                                       edgecolor='white', linewidth=0.)
         trisurfplot.set_array(colors)
@@ -128,7 +124,7 @@ def plot_basis_functions(mesh_eeg):
 
 if __name__ == '__main__':
     xyz_coords = get_electrode_coordinates()
-    mesh_eeg = create_triangular_dmesh(xyz_coords)
-    plot_mesh(mesh_eeg)
-    plot_basis_functions(mesh_eeg)
+    mesh = create_triangular_dmesh(xyz_coords)
+    plot_mesh(mesh)
+    plot_basis_functions(mesh)
 

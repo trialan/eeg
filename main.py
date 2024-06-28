@@ -6,7 +6,6 @@ from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.decomposition import PCA
 from sklearn.model_selection import ShuffleSplit, cross_val_score
 from sklearn.pipeline import Pipeline
-from xgboost import XGBClassifier
 
 import pyriemann
 
@@ -33,10 +32,10 @@ tmin, tmax = 1.0, 2.0
 runs = [6, 10, 14]
 
 
-def get_data():
+def get_data(n_subjects=109):
     Xs = []
     ys = []
-    for subject in range(1, 109+1):
+    for subject in range(1, n_subjects+1):
         X, y = get_formatted_data(subject)
         Xs.extend(X)
         ys.extend(y)
@@ -79,13 +78,6 @@ def get_raw_data(subject):
     return raw
 
 
-def assemble_classifier_PCA_XGB(n_components):
-    pca = PCA(n_components)
-    xgb = XGBClassifier()
-    clf = Pipeline([("PCA", pca), ("XGB", xgb)])
-    return clf
-
-
 def results(clf, X, y, cv):
     scores = cross_val_score(clf, X, y, cv=cv, n_jobs=None)
     class_balance = np.mean(y == y[0])
@@ -98,15 +90,4 @@ if __name__ == '__main__':
     X, y = get_data()
     cv = ShuffleSplit(5, test_size=0.2, random_state=42)
     component_numbers = list(range(1, 50, 5))
-
-    print("PCA+XGB")
-    X_rs = X.reshape(X.shape[0], X.shape[1]*X.shape[2])
-    scores = []
-    for n_components in tqdm(component_numbers):
-        clf = assemble_classifier_PCA_XGB(n_components)
-        score = results(clf, X_rs, y, cv)
-        scores.append(score)
-    plt.plot(component_numbers, scores, marker='o', linestyle='-', label='PCA+XGB')
-    plt.show()
-
 

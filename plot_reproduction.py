@@ -1,4 +1,16 @@
-from eeg.main import *
+from eeg.data import get_data
+import matplotlib.pyplot as plt
+
+from tqdm import tqdm
+from mne.decoding import CSP, UnsupervisedSpatialFilter
+
+import numpy as np
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.decomposition import PCA
+from sklearn.model_selection import ShuffleSplit, cross_val_score
+from sklearn.pipeline import Pipeline
+
+import pyriemann
 
 """
     This script exists to reproduce fig 3(a) from Xu et. al.
@@ -8,6 +20,11 @@ from eeg.main import *
         - Laplacian + FgMDM
         - Laplacian + CSP + LDA
 """
+
+
+def results(clf, X, y, cv):
+    scores = cross_val_score(clf, X, y, cv=cv, n_jobs=None)
+    return np.mean(scores)
 
 
 def assemble_classifer_PCACSPLDA(n_components):
@@ -34,9 +51,12 @@ def assemble_classifer_PCAFgMDM(n_components):
 
 
 if __name__ == '__main__':
-    X, y = get_data()
+    X, y = get_data(n_subjects=2)
     cv = ShuffleSplit(5, test_size=0.2, random_state=42)
-    component_numbers = list(range(1, 50))
+    component_numbers = [3,10] #list(range(1, 50))
+
+    print("Laplacian + LDA")
+
 
     print("CSP+LDA")
     scores = []

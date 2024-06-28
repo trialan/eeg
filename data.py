@@ -1,38 +1,16 @@
-from functools import lru_cache
-
-import matplotlib.pyplot as plt
-import numpy as np
-from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
-from sklearn.decomposition import PCA
-from sklearn.model_selection import ShuffleSplit, cross_val_score
-from sklearn.pipeline import Pipeline
-
-import pyriemann
-
 from mne import Epochs, pick_types
 from mne.channels import make_standard_montage
 from mne.datasets import eegbci
-from mne.decoding import CSP, UnsupervisedSpatialFilter
 from mne.io import concatenate_raws, read_raw_edf
+import numpy as np
 
-from tqdm import tqdm
-
-"""
-First we define our data-related parameters
-    - we set tmin and tmax as in the tutorial linked below
-    - runs are [6,10,14] as in the tutorial, [5,9,13] tempting to use but
-      represent action, not imagination
-    - use a single subject (subject 1) for pipeline setup
-
-Physionet page: https://physionet.org/content/eegmmidb/1.0.0/
-Tutorial: https://mne.tools/dev/auto_examples/decoding/decoding_csp_eeg.html
-"""
 
 tmin, tmax = 1.0, 2.0
 runs = [6, 10, 14]
 
 
 def get_data(n_subjects=109):
+    """ Set n_subjects to a small number for testing, 109 for full dataset """
     Xs = []
     ys = []
     for subject in range(1, n_subjects+1):
@@ -78,16 +56,4 @@ def get_raw_data(subject):
     return raw
 
 
-def results(clf, X, y, cv):
-    scores = cross_val_score(clf, X, y, cv=cv, n_jobs=None)
-    class_balance = np.mean(y == y[0])
-    class_balance = max(class_balance, 1.0 - class_balance)
-    #print(f"Accuracy: {np.mean(scores)} / Chance level: {class_balance}")
-    return np.mean(scores)
-
-
-if __name__ == '__main__':
-    X, y = get_data()
-    cv = ShuffleSplit(5, test_size=0.2, random_state=42)
-    component_numbers = list(range(1, 50, 5))
 

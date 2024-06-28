@@ -1,3 +1,4 @@
+import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
 import spharapy.trimesh as tm
 from scipy.spatial import Delaunay, ConvexHull
@@ -5,8 +6,9 @@ import spharapy.trimesh as trimesh
 import spharapy.spharabasis as sb
 import spharapy.datasets as sd
 import random
+import matplotlib.pyplot as plt
 
-from eeg.main import *
+from eeg.data import *
 
 """
     Based on the spharapy package, please note that Delaunay "triangulation" of
@@ -66,17 +68,17 @@ def length_of_longest_edge(triangle, vertices):
 def remove_bottom_of_the_mesh(mesh, N=6):
     """ Visual inspection reveals that the bottom triangles we want to be rid
         of have the longest edgs. So we remove the N triangles with longest edge """
-    le =  [length_of_longest_edge(t, mesh._vertices) for t in mesh._triangles]
+    le =  [length_of_longest_edge(t, mesh.vertlist) for t in mesh.trilist]
     ixs = np.argsort(le)[::-1][:N]
-    ntriangles = [mesh._triangles[ix] for ix in range(len(mesh._triangles)) if ix not in ixs]
-    mesh._triangles = np.array(ntriangles)
+    ntriangles = [mesh.trilist[ix] for ix in range(len(mesh.trilist)) if ix not in ixs]
+    mesh.trilist = np.array(ntriangles)
     return mesh
 
 
 def plot_mesh(mesh):
     """ Expects a sphara TriMesh """
-    vertices = np.array(mesh._vertices)
-    triangles = np.array(mesh._triangles)
+    vertices = np.array(mesh.vertlist)
+    triangles = np.array(mesh.trilist)
     fig = plt.figure()
     fig.subplots_adjust(left=0.02, right=0.98, top=0.98, bottom=0.02)
     ax = fig.add_subplot(projection='3d')
@@ -93,8 +95,8 @@ def plot_mesh(mesh):
 
 
 def plot_basis_functions(mesh):
-    vertices = np.array(mesh._vertices)
-    triangles = np.array(mesh._triangles)
+    vertices = np.array(mesh.vertlist)
+    triangles = np.array(mesh.trilist)
     eigenmodes = compute_scalp_eigenmodes(mesh)
 
     figsb1, axes1 = plt.subplots(nrows=7, ncols=7, figsize=(8, 12),

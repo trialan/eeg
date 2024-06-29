@@ -12,7 +12,7 @@ from sklearn.pipeline import Pipeline
 
 import pyriemann
 from eeg.laplacian import (get_electrode_coordinates,
-                           compute_scalp_eigenvectors,
+                           compute_scalp_eigenvectors_and_values,
                            create_triangular_dmesh, ED)
 
 """
@@ -78,7 +78,7 @@ if __name__ == '__main__':
 
     xyz_coords = get_electrode_coordinates()
     mesh = create_triangular_dmesh(xyz_coords)
-    eigenvectors, eigenvals = compute_scalp_eigenvectors(mesh)
+    eigenvectors, eigenvals = compute_scalp_eigenvectors_and_values(mesh)
 
 
     print("Laplacian+FgMDM")

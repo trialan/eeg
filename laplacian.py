@@ -18,8 +18,8 @@ from eeg.data import *
 """
 
 
-def compute_scalp_eigenvectors(mesh):
-    sphara_basis_unit = sb.SpharaBasis(mesh, 'inv_euclidean')
+def compute_scalp_eigenvectors_and_values(mesh):
+    sphara_basis_unit = sb.SpharaBasis(mesh, 'fem')
     eigenvectors, eigenvals = sphara_basis_unit.basis()
     return eigenvectors, eigenvals
 
@@ -123,7 +123,7 @@ def plot_mesh(mesh):
 def plot_basis_functions(mesh):
     vertices = np.array(mesh.vertlist)
     triangles = np.array(mesh.trilist)
-    eigenvectors = compute_scalp_eigenvectors(mesh)
+    eigenvectors, eigenvalues = compute_scalp_eigenvectors(mesh)
 
     figsb1, axes1 = plt.subplots(nrows=7, ncols=7, figsize=(8, 12),
                                  subplot_kw={'projection': '3d'})
@@ -153,7 +153,7 @@ def plot_basis_functions(mesh):
 if __name__ == '__main__':
     xyz_coords = get_electrode_coordinates()
     mesh = create_triangular_dmesh(xyz_coords)
-    eigenvectors = compute_scalp_eigenvectors(mesh)
+    eigenvectors, eigenvalues = compute_scalp_eigenvectors(mesh)
     #plot_mesh(mesh)
-    #plot_basis_functions(mesh)
+    plot_basis_functions(mesh)
 

@@ -19,6 +19,13 @@ This was using finite element methods for computing the eigenvectors, `sphara_ba
 
 Which is not promising, I would have hoped that the linear trend worked in both cases.
 
+### Ordering the eigenvectors?
+This experiment below suhggests we may want a clever way of sorting the order in which we add eigenvectors to the reduced-dimensions. This was inspired by AK's comment on
+the fact that some eigenmodes help the score, and others hurt the score. So you'd want to only keep those modes which help the score. However some modes help only when
+in combinaton with other.
+
+![random_shuffle_eigenvec](https://github.com/trialan/eeg/assets/16582240/8c4d93e5-bcc3-449e-8fc2-4d0ae5f92838)
+
 
 ## ML experiments
 

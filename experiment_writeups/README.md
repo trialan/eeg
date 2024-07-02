@@ -9,11 +9,16 @@ In this experiment I want to:
 2. Do the CSP trick of taking average power + scaling to drop the time dimension.
 3. Apply a standard classifier like LDA.
 
-This did very poorly without the scaling (peak score about 54%, which is almost as bad as random guessing). With the scaling it also has a bad score but has a very interesting shape:
+This did very poorly without the scaling (peak score about 54%, which is almost as bad as random guessing). With the scaling it also has a bad score but has a very interesting shape
 
 ![LSP+LDA (64)](https://github.com/trialan/eeg/assets/16582240/2269fc8e-9d92-4c52-b2f3-2b79d66caee4)
 
-So perhaps this would benefit from Taken's theorem!
+This was using finite element methods for computing the eigenvectors, `sphara_basis_unit = sb.SpharaBasis(mesh, 'fem')`. However when I use `inv_euclidean` we do not get this linear trend, but instead:
+
+![inv_euclidean_LSP+LDA](https://github.com/trialan/eeg/assets/16582240/82b68daf-c039-4721-9cd8-2b7852f4cff4)
+
+Which is not promising, I would have hoped that the linear trend worked in both cases.
+
 
 ## ML experiments
 

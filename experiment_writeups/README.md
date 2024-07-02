@@ -28,7 +28,9 @@ in combinaton with other.
 
 
 ## ML experiments
-
+### Fourier transforming coefficient matrix
+![10subjects_3rdEigenmode_AverageOfFourierTransform](https://github.com/trialan/eeg/assets/123100675/d06ca0df-3b80-45f5-b45b-e6acbc8895c9)
+The Fourier transforms of the coefficient of the third eigenmode as a function of time over each epoch in category '0' (probably 'hands') and category '1' for 10 subjects was taken. Then those fourier transforms were averaged. We see two consistent features, a dip in power around 0.1 for '1' and a difference in slope around the tails.
 ### TODO: ensembling!
 This must help if the approaches are sufficiently orthogonal.
 

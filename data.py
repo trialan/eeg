@@ -6,15 +6,18 @@ import numpy as np
 
 
 tmin, tmax = 1.0, 2.0
-runs = [6, 10, 14]
 
 
-def get_data(n_subjects=109):
+def get_data(n_subjects=109, bandpass=True, reststate=False):
     """ Set n_subjects to a small number for testing, 109 for full dataset """
+    if reststate:
+        runs = [1]
+    else:
+        runs = [6, 10, 14]
     Xs = []
     ys = []
     for subject in range(1, n_subjects+1):
-        X, y = get_formatted_data(subject)
+        X, y = get_formatted_data(subject, bandpass, runs)
         Xs.extend(X)
         ys.extend(y)
     homogenous_ixs = [i for i in range(len(Xs)) if Xs[i].shape==(64, 161)]
@@ -24,14 +27,19 @@ def get_data(n_subjects=109):
     return np.array(Xs_homogenous, dtype=np.float64), np.array(ys_homogenous)
 
 
-def get_formatted_data(subject):
+def get_formatted_data(subject, bandpass, runs):
     """ Band pass filter + pick only EEG channels + format as Epoch objects """
-    raw = get_raw_data(subject)
-    raw.filter(7.0, 30.0, fir_design="firwin", skip_by_annotation="edge")
+    raw = get_raw_data(subject, runs)
+    if bandpass:
+        raw.filter(7.0, 30.0, fir_design="firwin", skip_by_annotation="edge")
     picks = pick_types(raw.info, meg=False, eeg=True, stim=False, eog=False, exclude="bads")
+    if runs == [1]:
+        event_id = "rest"
+    else:
+        event_id = ["hands", "feet"]
     epochs = Epochs(
         raw,
-        event_id=["hands", "feet"],
+        event_id=event_id,
         tmin=tmin,
         tmax=tmax,
         proj=True,
@@ -44,14 +52,17 @@ def get_formatted_data(subject):
     return X, y
 
 
-def get_raw_data(subject):
+def get_raw_data(subject, runs):
     """ Get raw EEGMI data from website or locally if already downloaded """
     raw_fnames = eegbci.load_data(subject, runs)
     raw = concatenate_raws([read_raw_edf(f, preload=True) for f in raw_fnames])
     eegbci.standardize(raw)  # set channel names
     montage = make_standard_montage("standard_1020") #or 1005?
     raw.set_montage(montage)
-    raw.annotations.rename(dict(T1="hands", T2="feet"))
+    if runs == [1]:
+        raw.annotations.rename(dict(T0="rest"))
+    else:
+        raw.annotations.rename(dict(T1="hands", T2="feet"))
     raw.set_eeg_reference(projection=True)
     return raw
 

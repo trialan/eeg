@@ -13,6 +13,12 @@ is why I do permutedims(X, (3,2,1)).
 
 Questions:
     - is the permutation of dims correct?
+
+
+This code takes ~6.5hours to run. The output (17:29 July 4th 2024) is
+
+Optimal τ: 1652.7023060796646
+Optimal ψ: 287.6670859538784
 =#
 
 using HDF5
@@ -21,8 +27,8 @@ X = h5read(file_path, "X")
 X = permutedims(X, (3,2,1))
 println("Shape of the loaded matrix: ", size(X))
 
-
 using DelayEmbeddings
+
 
 function MDOP_for_epochs(X)
     # Initialize τ and ψ
@@ -56,5 +62,4 @@ end
 
 println("Optimal τ: ", τ_epoch)
 println("Optimal ψ: ", ψ_epoch)
-
 

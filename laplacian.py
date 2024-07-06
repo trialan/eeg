@@ -19,7 +19,7 @@ from eeg.data import *
 
 
 def compute_scalp_eigenvectors_and_values(mesh):
-    sphara_basis_unit = sb.SpharaBasis(mesh, 'inv_euclidean')
+    sphara_basis_unit = sb.SpharaBasis(mesh, 'fem')
     eigenvectors, eigenvals = sphara_basis_unit.basis()
     return eigenvectors, eigenvals
 
@@ -37,8 +37,9 @@ class ED(BaseEstimator, TransformerMixin):
 
     def transform(self, X):
         n_channels, n_times = X.shape
-        selected_eigenvectors = self.eigenvectors[:, :self.n_components]
-        X_transformed = np.dot(X, selected_eigenvectors)
+        selected_eigenvectors = self.eigenvectors[:self.n_components, :]
+        print(selected_eigenvectors.shape)
+        X_transformed = np.dot(selected_eigenvectors, X)
         return X_transformed
 
 
@@ -167,7 +168,7 @@ def get_256D_eigenvectors():
     vertlist = np.array(mesh_in['vertlist'])
     trilist = np.array(mesh_in['trilist'])
     mesh_eeg = tm.TriMesh(trilist, vertlist)
-    sphara_basis = sb.SpharaBasis(mesh_eeg, 'unit')
+    sphara_basis = sb.SpharaBasis(mesh_eeg, 'fem')
     eigenvectors, _ = sphara_basis.basis()
     return eigenvectors
 

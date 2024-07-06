@@ -17,8 +17,9 @@ from eeg.data import get_formatted_data, get_data
 
 def get_hands_feet_coefficients(eigenvectors, subjects):
     ed = ED(64, eigenvectors) #prepare for decomposition
-    X, y = get_data()
+    X, y = get_data(subjects)
     label = y # recording label, ie 'hands' or 'feet' with 0,1
+    print(label.shape)
     coeffs0_vs_t_for_epoch = [] #coefficients through time corresponding to label 0
     coeffs1_vs_t_for_epoch = [] #...to label 1
     for i in tqdm(range(len(label)), desc="getting coefficients"):
@@ -44,42 +45,48 @@ def get_fourier_data(eigenvectors):
 
 
 if __name__ == '__main__':
-    yz_coords = get_electrode_coordinates()
+    xyz_coords = get_electrode_coordinates()
     mesh = create_triangular_dmesh(xyz_coords)
     eigenvectors, eigenvalues = compute_scalp_eigenvectors_and_values(mesh)
 
-    X, y = get_fourier_data(eigenvectors)
 
-    cv = ShuffleSplit(5, test_size=0.2, random_state=42)
-
-    print("#############  FgMDM  #############")
-    Xcov = pyriemann.estimation.Covariances('oas').fit_transform(np.abs(X))
-    FgMDM = pyriemann.classification.FgMDM()
-    FgMDM_score = results(FgMDM, Xcov, y, cv)
-    plt.axhline(y=FgMDM_score, linestyle='--', label='FgMDM (norm. subj.)')
-    plt.legend()
-    plt.show()
-
-    1/0
     #Below are Anthony's plots:
     coeffs0_vs_t_for_epoch, coeffs1_vs_t_for_epoch = get_hands_feet_coefficients(eigenvectors, 1)
 
-    Coeffs0 = coeffs0_vs_t_for_epoch
-    Coeffs1 = coeffs1_vs_t_for_epoch
+    fourier0 = np.mean(np.fft.fft(coeffs0_vs_t_for_epoch), axis=0)
+    fourier1 = np.mean(np.fft.fft(coeffs1_vs_t_for_epoch), axis=0)
+    
+    num_eigenmodes = 20 #about the number of 'good' components
 
-    fourier0 = np.mean(np.fft.fft(Coeffs0), axis = 0)
-    fourier1 = np.mean(np.fft.fft(Coeffs1), axis = 0)
-    freq = np.fft.fftfreq(fourier0.shape[-1])
+    # Determine the grid size for plotting
+    cols = 4  # Number of columns in the grid
+    rows = int(np.ceil(num_eigenmodes / cols))  # Number of rows, calculated to fit all signals
 
-    print(fourier0.shape)
+    # Create a figure with a grid of subplots
+    fig, axes = plt.subplots(rows, cols, figsize=(15, 10))
 
-    log_power_spectrum0 = np.log10(np.abs(fourier0[2])**2) #picked mode 2 because of Xu et al paper
-    log_power_spectrum1 = np.log10(np.abs(fourier1[2])**2)
-    plt.plot(freq, log_power_spectrum0, label = '0')
-    plt.plot(freq, log_power_spectrum1, label = '1')
-    plt.axvline(x=-0.13043, color='r', linestyle='dashed', linewidth=0.5, label='Vertical Line')
+    # Flatten axes array for easy iteration
+    axes = axes.flatten()
 
-    plt.legend()
+    # Loop through each signal in Coeffs0, compute the Fourier transform, and plot it
+    for i in range(num_eigenmodes):
+        signal0 = fourier0[i]
+        signal1 = fourier1[i]
+        freqs = np.fft.fftfreq(signal0.shape[-1], 0.01)  # Assuming 10ms intervals
+        log_power_spectrum0 = np.log10(np.abs(signal0)**2)
+        log_power_spectrum1 = np.log10(np.abs(signal1)**2)
+
+        axes[i].plot(freqs, log_power_spectrum0)
+        axes[i].plot(freqs, log_power_spectrum1)
+        axes[i].set_title(f'FFT of Eigenmode {i}')
+        axes[i].set_xlabel('Frequency (Hz)')
+        axes[i].set_ylabel('Log Power Spectrum')
+
+    # Hide any empty subplots
+    for j in range(i + 1, len(axes)):
+        fig.delaxes(axes[j])
+
+    plt.tight_layout()
     plt.show()
 
 

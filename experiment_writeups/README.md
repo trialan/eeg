@@ -19,6 +19,37 @@ This was using finite element methods for computing the eigenvectors, `sphara_ba
 
 Which is not promising, I would have hoped that the linear trend worked in both cases.
 
+The linear trend suggests: use more eigenvectors and more electrodes, and you'll get a better score. So we do the simplest thing: get "synthetic electrodes" by jittering the data, and use spharapy's mesh to generate more eigenvectors. This got the score up to 59.7% (up from 56% with the first CSP+LDA experiment).
+
+```python
+eigenvectors = get_256D_eigenvectors()
+
+def jitter(x, sigma=0.3):
+    # https://arxiv.org/pdf/1706.00527.pdf
+    return x + np.random.normal(loc=np.mean(x), scale=sigma, size=x.shape)
+
+
+def augment_subX(subX):
+    assert subX.shape == (64, 161)
+    new_subX = list(subX)
+    for j in range(256 - 64):
+        ix = j%64
+        se = np.std(subX[ix]) / np.sqrt(161)
+        new_electrode = jitter(subX[ix], sigma=se/300)
+        new_subX.append(new_electrode)
+    new_subX = np.array(new_subX)
+    assert new_subX.shape == (256, 161)
+    return new_subX
+
+
+def transform_data(X):
+    X_prime = np.array([augment_subX(subX) for subX in tqdm(X)])
+    return X_prime
+
+```
+
+
+
 ### Ordering the eigenvectors?
 This experiment below suhggests we may want a clever way of sorting the order in which we add eigenvectors to the reduced-dimensions. This was inspired by AK's comment on
 the fact that some eigenmodes help the score, and others hurt the score. So you'd want to only keep those modes which help the score. However some modes help only when

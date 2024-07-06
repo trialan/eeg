@@ -19,7 +19,7 @@ from eeg.data import *
 
 
 def compute_scalp_eigenvectors_and_values(mesh):
-    sphara_basis_unit = sb.SpharaBasis(mesh, 'fem')
+    sphara_basis_unit = sb.SpharaBasis(mesh, 'inv_euclidean')
     eigenvectors, eigenvals = sphara_basis_unit.basis()
     return eigenvectors, eigenvals
 
@@ -45,32 +45,21 @@ class ED(BaseEstimator, TransformerMixin):
 def get_electrode_coordinates(subject=1):
     """ Get raw EEGMI data from website or locally if already downloaded.
         Filter only EEG channels to get 64 as we expect from Physionet data """
-    raw_fnames = eegbci.load_data(subject, runs) #all subjects have same coords
+    raw_fnames = eegbci.load_data(subject, [6,10,14]) #all subjects have same coords
     raw = concatenate_raws([read_raw_edf(f, preload=True) for f in raw_fnames])
     eegbci.standardize(raw)  # set channel names
     montage = make_standard_montage("standard_1020")
     raw.set_montage(montage)
     raw.set_eeg_reference(projection=True)
     raw.filter(7.0, 30.0, fir_design="firwin", skip_by_annotation="edge")
-
     # Pick only EEG channels
     picks = pick_types(raw.info, meg=False, eeg=True, stim=False, eog=False, exclude="bads")
     channel_names = [raw.ch_names[pick] for pick in picks]
-
     # Get positions of the selected channels
     montage_positions = montage.get_positions()
     xyz_coords = montage_positions['ch_pos']
     points = np.array([xyz_coords[ch_name] for ch_name in channel_names])
-
     return points
-
-
-def create_triangular_dmesh(xyz_coords):
-    """  Create a mesh using the Delaunay triangulation """
-    mesh = Delaunay(xyz_coords)
-    mesh = trimesh.TriMesh(mesh.convex_hull, mesh.points)
-    mesh = remove_bottom_of_the_mesh(mesh)
-    return mesh
 
 
 def distance(p1, p2):
@@ -123,7 +112,7 @@ def plot_mesh(mesh):
 def plot_basis_functions(mesh):
     vertices = np.array(mesh.vertlist)
     triangles = np.array(mesh.trilist)
-    eigenvectors, eigenvalues = compute_scalp_eigenvectors(mesh)
+    eigenvectors, eigenvalues = compute_scalp_eigenvectors_and_values(mesh)
 
     figsb1, axes1 = plt.subplots(nrows=7, ncols=7, figsize=(8, 12),
                                  subplot_kw={'projection': '3d'})
@@ -150,10 +139,44 @@ def plot_basis_functions(mesh):
     plt.show()
 
 
+def generate_interpolated_points(tri, num_points_per_edge=1):
+    interpolated_points = []
+    for simplex in tri.simplices:
+        vertices = tri.points[simplex]
+        for i in range(len(vertices)):
+            for j in range(i + 1, len(vertices)):
+                start_point = vertices[i]
+                end_point = vertices[j]
+                for k in range(1, num_points_per_edge + 1):
+                    t = k / (num_points_per_edge + 1)
+                    new_point = (1 - t) * start_point + t * end_point
+                    interpolated_points.append(new_point)
+    return np.array(interpolated_points)
+
+
+def create_triangular_dmesh(xyz_coords):
+    """  Create a mesh using the Delaunay triangulation """
+    mesh = Delaunay(xyz_coords)
+    mesh = trimesh.TriMesh(mesh.convex_hull, mesh.points)
+    mesh = remove_bottom_of_the_mesh(mesh)
+    return mesh
+
+
+def get_256D_eigenvectors():
+    mesh_in = sd.load_eeg_256_channel_study()
+    vertlist = np.array(mesh_in['vertlist'])
+    trilist = np.array(mesh_in['trilist'])
+    mesh_eeg = tm.TriMesh(trilist, vertlist)
+    sphara_basis = sb.SpharaBasis(mesh_eeg, 'unit')
+    eigenvectors, _ = sphara_basis.basis()
+    return eigenvectors
+
+
+
 if __name__ == '__main__':
     xyz_coords = get_electrode_coordinates()
     mesh = create_triangular_dmesh(xyz_coords)
-    eigenvectors, eigenvalues = compute_scalp_eigenvectors(mesh)
-    #plot_mesh(mesh)
-    plot_basis_functions(mesh)
+    eigenvectors, eigenvalues = compute_scalp_eigenvectors_and_values(mesh)
+
+    #plot_basis_functions(mesh)
 

@@ -59,6 +59,28 @@ in combinaton with other.
 
 
 ## ML experiments
+
+### CNNs with time series
+In this experiment I trained CNNs to learn the time series. Why? My logic was: the one trick that sort of worked has been this jittering. Deep learning models are great, but need lots of data. But we don't have that much data. Ok. With jittering we can get infinite amounts of data. So let's start with that. This is the default results (no data augmentation):
+
+![CNNs_raw](https://github.com/trialan/eeg/assets/16582240/6d5e025a-cc31-42ce-adad-130eddd19007)
+
+The best validation loss here is `0.69304`. Using Andrew Ng's [nuts and bolts of deep learning](https://www.datasciencecentral.com/nuts-and-bolts-of-building-deep-learning-applications-ng-nips2016/) we see that our 'dev error' (I call this validation loss) is high, so we should add more data. Before we do this, let's run this a few times to get a better estimate of the variance in our best validation loss because of the randomness of the splits.
+
+Over the five folds the best validation score can be found by taking the min of the validatio losses for that fold:
+
+```python
+In [19]: np.mean([np.min(v) for v in split_val_losses])
+Out[19]: 0.6928593751769395
+
+In [20]: np.std([np.min(v) for v in split_val_losses])/np.sqrt(5)
+Out[20]: 0.00010626354955632935
+```
+
+So actually our performance with the raw CNN is $0.6929 \pm 0.0001$. I'll report on what model accuracy this corresponds to later.
+
+
+
 ### Fourier transforming coefficient matrix
 ![10subjects_3rdEigenmode_AverageOfFourierTransform](https://github.com/trialan/eeg/assets/123100675/d06ca0df-3b80-45f5-b45b-e6acbc8895c9)
 The Fourier transforms of the coefficient of the third eigenmode as a function of time over each epoch in category '0' (probably 'hands') and category '1' for 10 subjects was taken. Then those fourier transforms were averaged. We see two consistent features, a dip in power around 0.1 for '1' and a difference in slope around the tails.

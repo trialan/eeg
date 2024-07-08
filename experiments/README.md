@@ -1,4 +1,4 @@
-# Experiment write-up
+# Experiment write-ups
 
 ## Brain-geometry informed experiments
 

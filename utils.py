@@ -2,6 +2,12 @@ import numpy as np
 from scipy.stats import boxcox
 
 
+def results(clf, X, y, cv):
+    """ clf is a classifier. This function trains the model and scores it """
+    scores = cross_val_score(clf, X, y, cv=cv, n_jobs=None)
+    return np.mean(scores)
+
+
 def jitter(x, sigma=0.3):
     # https://arxiv.org/pdf/1706.00527.pdf
     return x + np.random.normal(loc=np.mean(x), scale=sigma, size=x.shape)

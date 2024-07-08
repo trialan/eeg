@@ -14,6 +14,7 @@ import pyriemann
 from eeg.laplacian import (get_electrode_coordinates,
                            compute_scalp_eigenvectors_and_values,
                            create_triangular_dmesh, ED)
+from eeg.utils import results
 
 """
     This script exists to reproduce fig 3(a) from Xu et. al.
@@ -22,12 +23,6 @@ from eeg.laplacian import (get_electrode_coordinates,
     Physionet (dataset): https://physionet.org/content/eegmmidb/1.0.0/
     Tutorial: https://mne.tools/dev/auto_examples/decoding/decoding_csp_eeg.html
 """
-
-
-def results(clf, X, y, cv):
-    """ clf is a classifier. This function trains the model and scores it """
-    scores = cross_val_score(clf, X, y, cv=cv, n_jobs=None)
-    return np.mean(scores)
 
 
 def assemble_classifer_PCACSPLDA(n_components):

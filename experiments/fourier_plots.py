@@ -18,6 +18,7 @@ from eeg.data import get_formatted_data, get_data
 def get_hands_feet_coefficients(eigenvectors, subjects):
     ed = ED(30, eigenvectors) #prepare for decomposition
     X, y = get_data(subjects)
+    #print(eigenvectors[0][0])
     label = y # recording label, ie 'hands' or 'feet' with 0,1
     print(eigenvectors.shape)
     coeffs0_vs_t_for_epoch = [] #coefficients through time corresponding to label 0
@@ -47,7 +48,7 @@ def get_fourier_data(eigenvectors):
 if __name__ == '__main__':
     xyz_coords = get_electrode_coordinates()
     mesh = create_triangular_dmesh(xyz_coords)
-    eigenvectors, eigenvalues = compute_scalp_eigenvectors_and_values(mesh)
+    eigenvectors, eigenvalues = compute_scalp_eigenvectors_and_values()
 
     print(eigenvectors.shape)
     #Below are Anthony's plots:

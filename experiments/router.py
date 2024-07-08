@@ -120,8 +120,11 @@ if __name__ == '__main__':
         return cov
 
     Xcov = get_covariances(X_router)
-    router = pyriemann.classification.FgMDM()
+
+    router = EDFgMDM(n_components=64, eigenvectors=eigenvectors)
     router.fit(Xcov, y_router)
+    score = results(router, Xcov, y_router, cv)
+    print(f"###### Router score: {score}\n")
 
     X_test_cov = get_covariances(X_test)
 
@@ -131,6 +134,6 @@ if __name__ == '__main__':
         out = predict_with_router(row, cov_matrix, router)
         y_pred.append(out)
     score = accuracy_score(y_pred, y_test)
-    print(f"###### Router score: {score}\n")
+    print(f"###### Meta-clf score: {score}\n")
 
 

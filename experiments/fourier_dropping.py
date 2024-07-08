@@ -31,7 +31,6 @@ we experiment with other ways of collapsing the time dimension.
 """
 
 
-
 if __name__ == '__main__':
     X, y = get_data(2)
     cv = ShuffleSplit(5, test_size=0.2, random_state=42)

@@ -5,6 +5,12 @@ from mne.io import concatenate_raws, read_raw_edf
 import numpy as np
 
 
+"""
+    Physionet (dataset): https://physionet.org/content/eegmmidb/1.0.0/
+    Tutorial: https://mne.tools/dev/auto_examples/decoding/decoding_csp_eeg.html
+"""
+
+
 tmin, tmax = 1.0, 2.0
 
 
@@ -65,6 +71,5 @@ def get_raw_data(subject, runs):
         raw.annotations.rename(dict(T1="hands", T2="feet"))
     raw.set_eeg_reference(projection=True)
     return raw
-
 
 

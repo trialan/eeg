@@ -179,5 +179,3 @@ if __name__ == '__main__':
     mesh = create_triangular_dmesh(xyz_coords)
     eigenvectors, eigenvalues = compute_scalp_eigenvectors_and_values(mesh)
 
-    #plot_basis_functions(mesh)
-

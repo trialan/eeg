@@ -17,15 +17,13 @@ from sklearn.pipeline import Pipeline
 import pyriemann
 from eeg.laplacian import (get_electrode_coordinates,
                            get_256D_eigenvectors,
+                           compute_scalp_eigenvectors_and_values,
                            create_triangular_dmesh, ED)
 from eeg.ml import results
 from eeg.data import get_formatted_data, get_data
-from eeg.utils import avg_power_matrix
+from eeg.utils import avg_power_matrix, jitter
+from gtda.time_series import TakensEmbedding
 
-
-def jitter(x, sigma=0.3):
-    # https://arxiv.org/pdf/1706.00527.pdf
-    return x + np.random.normal(loc=np.mean(x), scale=sigma, size=x.shape)
 
 
 def augment_subX(subX):
@@ -53,15 +51,16 @@ if __name__ == '__main__':
     cv = ShuffleSplit(5, test_size=0.2, random_state=42)
 
     eigenvectors = get_256D_eigenvectors()
-    #xyz_coords = get_electrode_coordinates()
-    #mesh = create_triangular_dmesh(xyz_coords)
-    #eigenvectors, eigenvals = compute_scalp_eigenvectors_and_values(mesh)
+    xyz_coords = get_electrode_coordinates()
+    mesh = create_triangular_dmesh(xyz_coords)
+    eigenvectors, eigenvals = compute_scalp_eigenvectors_and_values(mesh)
 
     components = list(range(1,len(eigenvectors)))
     from sklearn.svm import SVC
     from sklearn.pipeline import make_pipeline
     from sklearn.preprocessing import StandardScaler
 
+    i1/0
     scores = []
     components = list(range(50,len(eigenvectors)))
     for n_components in tqdm(components):

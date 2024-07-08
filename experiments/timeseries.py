@@ -8,6 +8,7 @@ from eeg.laplacian import (get_electrode_coordinates,
 from eeg.ml import results
 from eeg.data import get_data
 import pandas as pd
+from sklearn.model_selection import ShuffleSplit, cross_val_score
 from sklearn.model_selection import train_test_split
 from sktime.datatypes._panel._convert import from_2d_array_to_nested
 from sktime.classification.interval_based import TimeSeriesForestClassifier
@@ -20,6 +21,8 @@ Idea for this experiment:
     - ensemble the predictions for each electrode-level clf
 
 Accuracy: 0.5324947589098532
+
+The highest score for any one electrode was 0.5401
 """
 
 
@@ -41,12 +44,25 @@ def make_sktime_compatible(X):
 
 
 if __name__ == '__main__':
-    X, y = get_data()
+    X, y = get_data(2)
+    cv = ShuffleSplit(5, test_size=0.2, random_state=42)
+
+    xyz_coords = get_electrode_coordinates()
+    mesh = create_triangular_dmesh(xyz_coords)
+    eigenvectors, eigenvals = compute_scalp_eigenvectors_and_values(mesh)
+
+    n_dims = 5
+    ed = ED(n_dims, eigenvectors)
+    X_ed = np.array([ed.transform(sub_X.T).T for sub_X in X])
+
+    xyz_coords = get_electrode_coordinates()
+    mesh = create_triangular_dmesh(xyz_coords)
+    eigenvectors, eigenvals = compute_scalp_eigenvectors_and_values(mesh)
 
     ### Make the time-series datasets
     ts_ds = []
-    for j in range(X.shape[1]):
-        dim_ts_ds = X[:, j, :]
+    for j in range(X_ed.shape[1]):
+        dim_ts_ds = X_ed[:, j, :]
         ts_ds.append(dim_ts_ds)
 
     ts_ds = np.array(ts_ds)
@@ -55,21 +71,27 @@ if __name__ == '__main__':
     ### Train a classifier per channel
     scores = []
     classifiers = []
-    preds = []
-    for i in tqdm(range(64), desc="Training electrode-level clf"):
-        X_train, X_test, y_train, y_test = get_train_test_split(ts_ds[i], y)
-
-        clf = TimeSeriesForestClassifier(n_jobs=-1,
-                                         random_state=42)
-        clf.fit(X_train, y_train)
-        y_pred = clf.predict(X_test)
-        score = accuracy_score(y_test, y_pred)
-
-        preds.append(y_pred)
+    for i in tqdm(range(n_dims), desc="Training electrode-level clf"):
+        clf = TimeSeriesForestClassifier(n_jobs=-1, random_state=42)
+        score = cross_val_score(clf, ts_ds[i], y, cv=cv)
+        clf.fit(ts_ds[i], y)
         scores.append(score)
         classifiers.append(clf)
 
-    voting_preds = sum(preds) / len(preds)
-    int_voting_preds = [round(vp) for vp in voting_preds]
-    print(accuracy_score(int_voting_preds, y_test))
+    gscores = []
+    for n_components in tqdm(range(2, n_dims), desc="Training LDA"):
+        ed = ED(n_components, eigenvectors)
+        X_ed = np.array([ed.transform(sub_X.T).T for sub_X in X])
+        import pdb;pdb.set_trace() 
+        ### Replace each time-series with the output of the relevant classifier
+        X_ap = np.array([classifiers[i].predict(sub_X) for i,sub_X in enumerate(X_ed)])
+
+        lda = LinearDiscriminantAnalysis()
+        score = results(lda, X_ap, y, cv)
+        gscores.append(score)
+
+    plt.plot(list(range(2, n_dims)), gscores, marker='o', linestyle='-', label='LSP+LDA')
+    plt.legend()
+    plt.show()
+
 

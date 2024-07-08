@@ -12,7 +12,8 @@ from eeg.laplacian import (
 )
 from eeg.ml import results
 from eeg.data import get_formatted_data, get_data
-from eeg.utils import avg_power_matrix
+from eeg.utils import avg_power_matrix, jitter, get_fraction
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -60,53 +61,50 @@ class TimeSeriesCNN(nn.Module):
         return x
 
 
-def train_model(model, train_loader, val_loader, criterion, optimizer, num_epochs=3, eval_interval=100):
-    losses = []
-    val_scores = []
+def train_model(model, train_loader, val_loader, criterion, optimizer, eval_interval=100):
+    train_losses = []
+    val_losses = []
     train_scores = []
     total_steps = 0
 
-    for epoch in tqdm(range(num_epochs), desc=f"training {num_epochs} epochs"):
-        model.train()  # Ensure model is in training mode
-        running_loss = 0.0
-        for step, (inputs, labels) in tqdm(enumerate(train_loader), desc=f"Epoch {epoch}"):
-            inputs, labels = inputs.to(device), labels.to(device)
+    model.train()
+    running_loss = 0.0
+    for step, (inputs, labels) in tqdm(enumerate(train_loader), desc=f"Training"):
+        inputs, labels = inputs.to(device), labels.to(device)
 
-            optimizer.zero_grad()
-            outputs = model(inputs)
-            loss = criterion(outputs, labels)
-            loss.backward()
-            optimizer.step()
+        optimizer.zero_grad()
+        outputs = model(inputs)
+        loss = criterion(outputs, labels)
+        loss.backward()
+        optimizer.step()
 
-            running_loss += loss.item() * inputs.size(0)
-            total_steps += 1
+        running_loss += loss.item() * inputs.size(0)
+        total_steps += 1
 
-            if (step + 1) % eval_interval == 0:
-                step_loss = running_loss / total_steps
-                val_score = evaluate_model_CE(model, val_loader)
-                #train_score = evaluate_model(model, train_loader)
+        if (step + 1) % eval_interval == 0:
+            step_loss = running_loss / eval_interval
+            val_score = evaluate_model_CE(model, val_loader)
 
-                losses.append(step_loss)
-                #train_scores.append(train_score)
-                val_scores.append(val_score)
+            train_losses.append(step_loss)
+            val_losses.append(val_score)
 
-                running_loss = 0.0
+            running_loss = 0.0
 
-    return model, np.array(losses), np.array(val_scores)
+    return model, np.array(train_losses), np.array(val_losses)
 
 
-def makeplot(val_scores, losses):
+def makeplot(val_losses, losses):
     plt.figure(figsize=(12, 5))
     plt.title("TimeSeriesCNN loss curves on raw dataset")
 
     plt.subplot(1, 2, 1)
-    plt.plot(range(len(val_scores)), losses,
+    plt.plot(range(len(val_losses)), losses,
              color='g', label="train loss",
              linestyle="--", marker="o")
     plt.legend()
 
     plt.subplot(1, 2, 2)
-    plt.plot(range(len(val_scores)), val_scores,
+    plt.plot(range(len(val_losses)), val_losses,
                 color='g', label="validation loss",
                 linestyle="--", marker="o")
     plt.legend()
@@ -150,10 +148,6 @@ def evaluate_model_accuracy(model, val_loader):
     return total_correct / total_samples
 
 
-def get_fraction(x, fraction):
-    return x[:int(fraction * len(x))]
-
-
 def get_dataloaders(X_train, X_val, y_train, y_val):
         fraction = 1.0
         frac_X_train = get_fraction(X_train, fraction)
@@ -177,9 +171,36 @@ def get_dataloaders(X_train, X_val, y_train, y_val):
         return train_loader, val_loader
 
 
+def augment_data(X, y):
+    N, height, width = X.shape  # Assuming X.shape is (N, 64, 161)
+    augmented_X = np.empty((3 * N, height, width))
+    augmented_y = np.empty(3 * N, dtype=y.dtype)
+
+    se = np.std(X[0][0]) / np.sqrt(161)
+
+    for i in range(N):
+        original = X[i]  # Original data slice
+        jittered1 = jitter(original, se)
+        jittered2 = jitter(original, se)
+
+        # Store the original and jittered arrays in the new dataset
+        augmented_X[3 * i] = original
+        augmented_X[3 * i + 1] = jittered1
+        augmented_X[3 * i + 2] = jittered2
+
+        # Corresponding labels
+        augmented_y[3 * i] = y[i]
+        augmented_y[3 * i + 1] = y[i]
+        augmented_y[3 * i + 2] = y[i]
+
+    return augmented_X, augmented_y
+
+
 if __name__ == "__main__":
     X, y = get_data()
+    X, y = augment_data(X, y)
     X = X[:, np.newaxis, :, :]  # Add channel dimension
+
     cv = ShuffleSplit(5, test_size=0.2, random_state=42)
 
     models = []
@@ -188,6 +209,7 @@ if __name__ == "__main__":
     for train_index, val_index in tqdm(cv.split(X), desc="Split learning"):
         X_train, X_val = X[train_index], X[val_index]
         y_train, y_val = y[train_index], y[val_index]
+
         train_loader, val_loader = get_dataloaders(X_train, X_val,
                                                    y_train, y_val)
 
@@ -198,7 +220,7 @@ if __name__ == "__main__":
 
         model, train_losses, val_losses = train_model(model, train_loader,
                                          val_loader, criterion,
-                                         optimizer, num_epochs=1)
+                                         optimizer)
 
         split_train_losses.append(train_losses)
         split_val_losses.append(val_losses)

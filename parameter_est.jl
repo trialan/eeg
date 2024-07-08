@@ -19,6 +19,10 @@ This code takes ~6.5hours to run. The output (17:29 July 4th 2024) is
 
 Optimal τ: 1652.7023060796646
 Optimal ψ: 287.6670859538784
+
+
+I think my normalisation is wrong and we need to divide by 64 again,
+yielding Tau of 25 and Psi of 4.
 =#
 
 using HDF5

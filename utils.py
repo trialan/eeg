@@ -2,6 +2,14 @@ import numpy as np
 from scipy.stats import boxcox
 
 
+def jitter(x, sigma=0.3):
+    # https://arxiv.org/pdf/1706.00527.pdf
+    return x + np.random.normal(loc=np.mean(x), scale=sigma, size=x.shape)
+
+
+def get_fraction(x, fraction):
+    return x[:int(fraction * len(x))]
+
 def avg_power_vector(u):
     """ Return the avg power of a vector """
     assert len(u.shape) == 1

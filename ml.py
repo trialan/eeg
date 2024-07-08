@@ -19,10 +19,6 @@ from eeg.laplacian import (get_electrode_coordinates,
     This script exists to reproduce fig 3(a) from Xu et. al.
     https://hal.science/hal-03477057/documen://hal.science/hal-03477057/document
 
-    So far it is missing:
-        - Laplacian + FgMDM
-        - Laplacian + CSP + LDA
-
     Physionet (dataset): https://physionet.org/content/eegmmidb/1.0.0/
     Tutorial: https://mne.tools/dev/auto_examples/decoding/decoding_csp_eeg.html
 """

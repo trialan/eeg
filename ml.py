@@ -7,14 +7,13 @@ from mne.decoding import CSP, UnsupervisedSpatialFilter
 import numpy as np
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.decomposition import PCA
-from sklearn.model_selection import ShuffleSplit, cross_val_score
 from sklearn.pipeline import Pipeline
 
 import pyriemann
 from eeg.laplacian import (get_electrode_coordinates,
                            compute_scalp_eigenvectors_and_values,
                            create_triangular_dmesh, ED)
-from eeg.utils import results
+from eeg.utils import results, get_cv
 
 """
     This script reproduces fig 3(a) from Xu et. al.
@@ -61,7 +60,8 @@ def assemble_classifier_LaplacianFgMDM(n_components, eigenvectors):
 
 if __name__ == '__main__':
     X, y = get_data()
-    cv = ShuffleSplit(5, test_size=0.2, random_state=42)
+    cv = get_cv()
+
     component_numbers = list(range(1, 50))
 
     xyz_coords = get_electrode_coordinates()

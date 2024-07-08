@@ -63,23 +63,47 @@ in combinaton with other.
 ### CNNs with time series
 In this experiment I trained CNNs to learn the time series. Why? My logic was: the one trick that sort of worked has been this jittering. Deep learning models are great, but need lots of data. But we don't have that much data. Ok. With jittering we can get infinite amounts of data. So let's start with that. This is the default results (no data augmentation):
 
-![CNNs_raw](https://github.com/trialan/eeg/assets/16582240/6d5e025a-cc31-42ce-adad-130eddd19007)
+![CNN_raw_100pct](https://github.com/trialan/eeg/assets/16582240/17923583-dee7-4d85-b459-f7b023d4c64d)
 
-The best validation loss here is `0.69304`. Using Andrew Ng's [nuts and bolts of deep learning](https://www.datasciencecentral.com/nuts-and-bolts-of-building-deep-learning-applications-ng-nips2016/) we see that our 'dev error' (I call this validation loss) is high, so we should add more data. Before we do this, let's run this a few times to get a better estimate of the variance in our best validation loss because of the randomness of the splits.
+The best validation loss here is `0.6928` (note this is averaged over 5 folds, still pretty ugly val losses!). Using Andrew Ng's [nuts and bolts of deep learning](https://www.datasciencecentral.com/nuts-and-bolts-of-building-deep-learning-applications-ng-nips2016/) we see that our 'dev error' (I call this validation loss) is high, so we should add more data. Before we do this, let's do a quick abalation experiment to verify that the validation loss is indeed worse (higher) for less data.
 
-Over the five folds the best validation score can be found by taking the min of the validatio losses for that fold:
+Over the five folds the best validation score can be found by taking the min of the validation losses for that fold:
 
 ```python
-In [19]: np.mean([np.min(v) for v in split_val_losses])
-Out[19]: 0.6928593751769395
+In [1]: np.mean([np.min(v) for v in split_val_losses])
+Out[1]: 0.6928343726404058
 
-In [20]: np.std([np.min(v) for v in split_val_losses])/np.sqrt(5)
-Out[20]: 0.00010626354955632935
+In [2]: np.std([np.min(v) for v in split_val_losses])/np.sqrt(5)
+Out[2]: 0.00010629982104669662
 ```
 
-So actually our performance with the raw CNN is $0.6929 \pm 0.0001$. I'll report on what model accuracy this corresponds to later.
+So actually our performance with the raw CNN on the full time-series is $0.6929 \pm 0.0001$. I'll report on what model accuracy this corresponds to later. 
 
+To do this ablation experiment, I re-run the above experiment with 50% less data in the train set (but the same amount of data in the validation set).
 
+```python
+    for train_index, val_index in tqdm(cv.split(X), desc="Split learning"):
+        X_train, X_val = X[train_index], X[val_index]
+        y_train, y_val = y[train_index], y[val_index]
+        X_train = get_fraction(X_train, 0.5)
+        y_train = get_fraction(y_train, 0.5)
+        train_loader, val_loader = get_dataloaders(X_train, X_val,
+                                                   y_train, y_val)
+```
+
+And this gave the result $$0.6929 \pm 0.0001$. The magnitude on this is a bit hard to interpret but smaller numbers are better, and more data had a smaller number, so the Andrew Ng flowchart gave us the right idea and we will now experiment with data augmentation. Let's 3x the data using jittering. Now, in `jitter_augment.py` we augment the number of electrodes. Here we have evidence for augmenting the number of samples, so let's do that instead. I use the `augment_data` function in `cnn.py`. This is what I get:
+
+![3x_jitter_CNN](https://github.com/trialan/eeg/assets/16582240/fd89b2ff-3a18-4739-addc-0a555080dbe7)
+
+```python
+In [1]: np.mean([np.min(v) for v in split_val_losses])
+Out[1]: 0.6930747129882157
+
+In [2]: np.std([np.min(v) for v in split_val_losses])/np.sqrt(5)
+Out[2]: 3.35874317722525e-05
+```
+
+--> This didn't help. That's a bit odd, needs further reflecting.
 
 ### Fourier transforming coefficient matrix
 ![10subjects_3rdEigenmode_AverageOfFourierTransform](https://github.com/trialan/eeg/assets/123100675/d06ca0df-3b80-45f5-b45b-e6acbc8895c9)

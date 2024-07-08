@@ -60,6 +60,14 @@ in combinaton with other.
 
 ## ML experiments
 
+### Ensembling
+Write up in ensembling.py, tl;dr this wasn't particularly helpful.
+
+### Routing
+I call a "router" a model that picks which of our classifiers we should use to classify a given $(64,161)$ EEG recording. I think routing may be quite powerful because of this analysis (in `ensemble.py`): consider the set of subjects correctly classified by each of our best models, and see how they differ. In the diagram below we see that there are 62+141 subjects correctly classified by 10-component CSP+LDA that 24-component Laplacian+FgMDM (our most powerful model) is unable to correctly label. By summing all the numbers on the diagram we can get a theoretical upper bound (if we had a perfect router model), as there were 1431 subjects in this test set, and in total 1152 of them were classified correctly by at least one classifer, which gives $1152/1431=80.5$% theoretical upper bound for a router between these models. It's hard to build a better model, perhaps it's easier to build a good router?
+
+![Venn Diagram](https://github.com/trialan/eeg/assets/16582240/ea76f743-e977-4fb2-b42c-bad56752a367)
+
 ### CNNs with time series
 In this experiment I trained CNNs to learn the time series. Why? My logic was: the one trick that sort of worked has been this jittering. Deep learning models are great, but need lots of data. But we don't have that much data. Ok. With jittering we can get infinite amounts of data. So let's start with that. This is the default results (no data augmentation):
 
@@ -111,9 +119,6 @@ The Fourier transforms of the coefficient of the third eigenmode as a function o
 Here are the fourier transforms of eigenmode decomposition coefficients for the first 20 eigenmodes, orange is for hands, blue is for feet (or vice versa). The FTs for all 'hands' epochs were averaged (for all subjects) and same for feet. Notice eigenmode 16 - it might be used for distinguishing between the two?
 ![fourier_galore_allmodes](https://github.com/trialan/eeg/assets/123100675/d37d97f0-bc04-4206-b7e0-ddeb80e4031c)
 
-
-### TODO: ensembling!
-This must help if the approaches are sufficiently orthogonal.
 
 ### Data-augmentation / reduction experiments
 Write up as a comment in the code file. Taken's theorem from [this paper](https://arxiv.org/pdf/2403.05645?fbclid=IwZXh0bgNhZW0CMTAAAR1wcNdM6sIvx3LgeoNmmbgoFQp5Tr9sF7Ud651u5KMlQf6zNsX0VNQynHU_aem_rkkPO4cvOQQCELS2vtudVQ)

@@ -9,11 +9,8 @@ import random
 import matplotlib.pyplot as plt
 from sklearn.base import BaseEstimator, TransformerMixin
 
-from eeg.data import *
-
 """
     Based on the spharapy package. Read the tutorial below.
-
     https://spharapy.readthedocs.io/en/latest/auto_examples/plot_02_sphara_basis_eeg.html
 """
 
@@ -22,6 +19,24 @@ def compute_scalp_eigenvectors_and_values(mesh):
     sphara_basis_unit = sb.SpharaBasis(mesh, 'fem')
     eigenvectors, eigenvals = sphara_basis_unit.basis()
     return eigenvectors, eigenvals
+
+
+def get_256D_eigenvectors():
+    mesh_in = sd.load_eeg_256_channel_study()
+    vertlist = np.array(mesh_in['vertlist'])
+    trilist = np.array(mesh_in['trilist'])
+    mesh_eeg = tm.TriMesh(trilist, vertlist)
+    sphara_basis = sb.SpharaBasis(mesh_eeg, 'fem')
+    eigenvectors, _ = sphara_basis.basis()
+    return eigenvectors
+
+
+def create_triangular_dmesh(xyz_coords):
+    """  Create a mesh using the Delaunay triangulation """
+    mesh = Delaunay(xyz_coords)
+    mesh = trimesh.TriMesh(mesh.convex_hull, mesh.points)
+    mesh = remove_bottom_of_the_mesh(mesh)
+    return mesh
 
 
 class ED(BaseEstimator, TransformerMixin):
@@ -36,6 +51,7 @@ class ED(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X):
+        #TODO: investigate this class further, is the dot product correct
         n_channels, n_times = X.shape
         selected_eigenvectors = self.eigenvectors[:self.n_components, :]
         print(selected_eigenvectors.shape)
@@ -63,12 +79,14 @@ def get_electrode_coordinates(subject=1):
     return points
 
 
-def distance(p1, p2):
-    dx =(p1[0] - p2[0])
-    dy =(p1[1] - p2[1])
-    dz =(p1[2] - p2[2])
-    distance = np.sqrt(dx**2 + dy**2 + dz**2)
-    return distance
+def remove_bottom_of_the_mesh(mesh, N=6):
+    """ Visual inspection reveals that the bottom triangles we want to be rid
+        of have the longest edgs. So we remove the N triangles with longest edge """
+    le =  [length_of_longest_edge(t, mesh.vertlist) for t in mesh.trilist]
+    ixs = np.argsort(le)[::-1][:N]
+    ntriangles = [mesh.trilist[ix] for ix in range(len(mesh.trilist)) if ix not in ixs]
+    mesh.trilist = np.array(ntriangles)
+    return mesh
 
 
 def length_of_longest_edge(triangle, vertices):
@@ -81,14 +99,12 @@ def length_of_longest_edge(triangle, vertices):
     return max(el1, el2, el3)
 
 
-def remove_bottom_of_the_mesh(mesh, N=6):
-    """ Visual inspection reveals that the bottom triangles we want to be rid
-        of have the longest edgs. So we remove the N triangles with longest edge """
-    le =  [length_of_longest_edge(t, mesh.vertlist) for t in mesh.trilist]
-    ixs = np.argsort(le)[::-1][:N]
-    ntriangles = [mesh.trilist[ix] for ix in range(len(mesh.trilist)) if ix not in ixs]
-    mesh.trilist = np.array(ntriangles)
-    return mesh
+def distance(p1, p2):
+    dx =(p1[0] - p2[0])
+    dy =(p1[1] - p2[1])
+    dz =(p1[2] - p2[2])
+    distance = np.sqrt(dx**2 + dy**2 + dz**2)
+    return distance
 
 
 def plot_mesh(mesh):
@@ -140,42 +156,9 @@ def plot_basis_functions(mesh):
     plt.show()
 
 
-def generate_interpolated_points(tri, num_points_per_edge=1):
-    interpolated_points = []
-    for simplex in tri.simplices:
-        vertices = tri.points[simplex]
-        for i in range(len(vertices)):
-            for j in range(i + 1, len(vertices)):
-                start_point = vertices[i]
-                end_point = vertices[j]
-                for k in range(1, num_points_per_edge + 1):
-                    t = k / (num_points_per_edge + 1)
-                    new_point = (1 - t) * start_point + t * end_point
-                    interpolated_points.append(new_point)
-    return np.array(interpolated_points)
-
-
-def create_triangular_dmesh(xyz_coords):
-    """  Create a mesh using the Delaunay triangulation """
-    mesh = Delaunay(xyz_coords)
-    mesh = trimesh.TriMesh(mesh.convex_hull, mesh.points)
-    mesh = remove_bottom_of_the_mesh(mesh)
-    return mesh
-
-
-def get_256D_eigenvectors():
-    mesh_in = sd.load_eeg_256_channel_study()
-    vertlist = np.array(mesh_in['vertlist'])
-    trilist = np.array(mesh_in['trilist'])
-    mesh_eeg = tm.TriMesh(trilist, vertlist)
-    sphara_basis = sb.SpharaBasis(mesh_eeg, 'fem')
-    eigenvectors, _ = sphara_basis.basis()
-    return eigenvectors
-
-
-
 if __name__ == '__main__':
     xyz_coords = get_electrode_coordinates()
     mesh = create_triangular_dmesh(xyz_coords)
     eigenvectors, eigenvalues = compute_scalp_eigenvectors_and_values(mesh)
+
 

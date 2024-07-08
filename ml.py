@@ -10,9 +10,8 @@ from sklearn.decomposition import PCA
 from sklearn.pipeline import Pipeline
 
 import pyriemann
-from eeg.laplacian import (get_electrode_coordinates,
-                           compute_scalp_eigenvectors_and_values,
-                           create_triangular_dmesh, ED)
+from eeg.laplacian import (compute_scalp_eigenvectors_and_values,
+                           ED)
 from eeg.utils import results, get_cv
 
 """
@@ -36,13 +35,6 @@ def assemble_classifer_CSPLDA(n_components):
     return clf
 
 
-def assemble_classifer_PCAFgMDM(n_components):
-    pca = UnsupervisedSpatialFilter(PCA(n_components), average=False)
-    FgMDM = pyriemann.classification.FgMDM()
-    clf = Pipeline([("PCA", pca), ("FgMDM", FgMDM)])
-    return clf
-
-
 def assemble_classifier_LaplacianCSPLDA(n_components, eigenvectors):
     ed = UnsupervisedSpatialFilter(ED(n_components, eigenvectors), average=False)
     lda = LinearDiscriminantAnalysis()
@@ -61,13 +53,9 @@ def assemble_classifier_LaplacianFgMDM(n_components, eigenvectors):
 if __name__ == '__main__':
     X, y = get_data()
     cv = get_cv()
+    eigenvectors, eigenvals = compute_scalp_eigenvectors_and_values()
 
     component_numbers = list(range(1, 50))
-
-    xyz_coords = get_electrode_coordinates()
-    mesh = create_triangular_dmesh(xyz_coords)
-    eigenvectors, eigenvals = compute_scalp_eigenvectors_and_values(mesh)
-
 
     print("Laplacian+FgMDM")
     scores = []

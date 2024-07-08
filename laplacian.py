@@ -9,13 +9,25 @@ import random
 import matplotlib.pyplot as plt
 from sklearn.base import BaseEstimator, TransformerMixin
 
+from mne.datasets import eegbci
+from mne.io import concatenate_raws, read_raw_edf
+from mne import pick_types
+from mne.channels import make_standard_montage
+
 """
     Based on the spharapy package. Read the tutorial below.
     https://spharapy.readthedocs.io/en/latest/auto_examples/plot_02_sphara_basis_eeg.html
 """
 
 
-def compute_scalp_eigenvectors_and_values(mesh):
+def compute_scalp_eigenvectors_and_values():
+    xyz_coords = get_electrode_coordinates()
+    mesh = create_triangular_dmesh(xyz_coords)
+    eigenvectors, eigenvals = _compute_scalp_eigenvectors_and_values(mesh)
+    return eigenvectors, eigenvals
+
+
+def _compute_scalp_eigenvectors_and_values(mesh):
     sphara_basis_unit = sb.SpharaBasis(mesh, 'fem')
     eigenvectors, eigenvals = sphara_basis_unit.basis()
     return eigenvectors, eigenvals

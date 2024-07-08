@@ -4,7 +4,7 @@ from scipy.stats import boxcox
 
 
 def results(clf, X, y, cv):
-    """ clf is a classifier. This function trains the model and scores it """
+    """ clf is classifier. This function trains the model and scores it """
     scores = cross_val_score(clf, X, y, cv=cv, n_jobs=None)
     return np.mean(scores)
 
@@ -22,7 +22,7 @@ def jitter(x, sigma=0.3):
 
 
 def get_fraction(x, fraction):
-    """ Usefule to get fraction of a dataset for ablation experiments """
+    """ Useful to get fraction of a dataset for ablation experiments """
     return x[:int(fraction * len(x))]
 
 

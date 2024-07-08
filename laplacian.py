@@ -66,7 +66,6 @@ class ED(BaseEstimator, TransformerMixin):
         #TODO: investigate this class further, is the dot product correct
         n_channels, n_times = X.shape
         selected_eigenvectors = self.eigenvectors[:self.n_components, :]
-        print(selected_eigenvectors.shape)
         X_transformed = np.dot(selected_eigenvectors, X)
         return X_transformed
 

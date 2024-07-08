@@ -1,7 +1,10 @@
 import numpy as np
 import pyriemann
+import matplotlib.pyplot as plt
+from matplotlib_venn import venn3
 
 from sklearn.base import BaseEstimator, TransformerMixin, ClassifierMixin
+from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 
 from eeg.data import get_data
@@ -15,12 +18,18 @@ from eeg.laplacian import compute_scalp_eigenvectors_and_values
 """
 What we would like to beat: 63.38%.
 
+Example usage:
+
+    ensemble = EnsembleClassifier(t_classifiers = [pca_csp_lda, csp_lda],
+                                  r_classifiers = [ed_fgmdm],
+                                  weights = None)
+
 Experiment 1: score = 62.81%
     - EnsembleClassifier with:
         - PCA + CSP + LDA with 30 components
         - CSP + LDA with 10 components
         - OldED + FgMDM with 24 components
-    - weights: 1/3 for each model
+    - weights: 1/3 for each model (i.e. None)
 
 Experiment 2: score = 62.73%
     - EnsembleClassifier with:
@@ -88,14 +97,15 @@ class EnsembleClassifier(BaseEstimator, ClassifierMixin):
 
 
 class EDFgMDM(BaseEstimator):
-    def __init__(self, n_components):
+    def __init__(self, n_components, eigenvectors):
         self.n_components = n_components
+        self.eigenvectors = eigenvectors
         self.clf = FgMDM = pyriemann.classification.FgMDM()
 
     def get_ED_covariance_data(self, X):
         n_epochs, n_channels, n_times = X.shape
         X_reshaped = X.reshape(n_times * n_epochs, n_channels)
-        ed = OldED(self.n_components, eigenvectors)
+        ed = OldED(self.n_components, self.eigenvectors)
         X_ed = np.array([ed.transform(epoch.T).T for epoch in X])
         Xcov = pyriemann.estimation.Covariances('oas').fit_transform(X_ed)
         return Xcov
@@ -123,28 +133,38 @@ if __name__ == '__main__':
     cv = get_cv()
     eigenvectors, eigenvals = compute_scalp_eigenvectors_and_values()
 
-    print("Laplacian+FgMDM with 24 components (score: 63.38%)")
-    ed_fgmdm = EDFgMDM(n_components=24)
-    #score = results(clf, X, y, cv)
+    X_train, X_test, y_train, y_test = train_test_split(X, y,
+                                                        test_size=0.3,
+                                                        random_state=42)
+
+    edf = EDFgMDM(n_components=24,
+                       eigenvectors=eigenvectors)
+    edf.fit(X_train, y_train)
+    edf_y_pred = edf.predict(X_test)
+    good_edf_subjects = np.where(edf_y_pred == y_test)[0]
 
 
-    print("PCA+CSP+LDA with 30 components (score: 62.52%)")
-    n_components = 30
-    pca_csp_lda = assemble_classifer_PCACSPLDA(n_components)
-    #score = results(pca_csp_lda, X, y, cv)
+    pcl = assemble_classifer_PCACSPLDA(n_components=30)
+    pcl.fit(X_train, y_train)
+    pcl_y_pred = pcl.predict(X_test)
+    good_pcl_subjects = np.where(pcl_y_pred == y_test)[0]
 
 
-    print("CSP+LDA with 10 components (score: 61.74%)")
-    n_components = 10
-    csp_lda = assemble_classifer_CSPLDA(n_components)
-    #score = results(csp_lda, X, y, cv)
+    cl = assemble_classifer_CSPLDA(n_components=10)
+    cl.fit(X_train, y_train)
+    cl_y_pred = cl.predict(X_test)
+    good_cl_subjects = np.where(cl_y_pred == y_test)[0]
 
-    sum_of_scores = 0.6338 + 0.6252 + 0.6174
-    ensemble = EnsembleClassifier(t_classifiers = [pca_csp_lda, csp_lda],
-                                  r_classifiers = [ed_fgmdm],
-                                  weights = np.array([0.6338, 0.6252, 0.6174]) / sum_of_scores)
-    score = results(ensemble, X, y, cv)
-    print(score)
+    # Convert indices to sets
+    set1 = set(good_edf_subjects)
+    set2 = set(good_pcl_subjects)
+    set3 = set(good_cl_subjects)
 
+    # Create the Venn diagram
+    plt.figure(figsize=(8, 8))
+    venn = venn3([set1, set2, set3], ('EDFgMDM', 'PCA+CSP+LDA', 'CSP+LDA'))
+
+    # Display the Venn diagram
+    plt.show()
 
 

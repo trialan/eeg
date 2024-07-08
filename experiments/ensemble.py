@@ -162,7 +162,7 @@ if __name__ == '__main__':
 
     # Create the Venn diagram
     plt.figure(figsize=(8, 8))
-    venn = venn3([set1, set2, set3], ('Laplcian + FgMDM (24 components)', 'PCA+CSP+LDA (30 components)', 'CSP+LDA (10 components)'))
+    venn = venn3([set1, set2, set3], ('Laplacian + FgMDM (24 components)', 'PCA+CSP+LDA (30 components)', 'CSP+LDA (10 components)'))
 
     # Display the Venn diagram
     plt.show()

@@ -68,6 +68,13 @@ I call a "router" a model that picks which of our classifiers we should use to c
 
 ![Venn Diagram](https://github.com/trialan/eeg/assets/16582240/ea76f743-e977-4fb2-b42c-bad56752a367)
 
+Actually the above venn diagram (generated using `venn3` is wrong, I'm not sure what it's counting but it has more subjects than there are in the validation set used to generate it, so something is wrong). Correct venn diagrams generated using `venn` are below for 3 and 4 model routing:
+
+![3-model-Venn (corrected)](https://github.com/trialan/eeg/assets/16582240/706ea99b-a63a-4755-824a-bf71c2a2f9ed)
+![4-model-Venn](https://github.com/trialan/eeg/assets/16582240/cc6db827-2072-458b-8e97-e0d6b1a0dfdb)
+
+
+
 ### CNNs with time series
 In this experiment I trained CNNs to learn the time series. Why? My logic was: the one trick that sort of worked has been this jittering. Deep learning models are great, but need lots of data. But we don't have that much data. Ok. With jittering we can get infinite amounts of data. So let's start with that. This is the default results (no data augmentation):
 

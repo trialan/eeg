@@ -3,7 +3,7 @@ from tqdm import tqdm
 import pyriemann
 
 import matplotlib.pyplot as plt
-from matplotlib_venn import venn3
+from venn import venn
 
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
@@ -111,11 +111,11 @@ if __name__ == '__main__':
     pcl_set = set(good_pcl_subjects)
     cl_set = set(good_cl_subjects)
 
-    plt.figure(figsize=(8, 8))
-    venn = venn3([edf_set, pcl_set, cl_set],
-                 ('Laplacian + FgMDM (24 components)',
-                  'PCA+CSP+LDA (30 components)',
-                  'CSP+LDA (10 components)'))
+    data = {"Laplacian + FgMDM": edf_set,
+            "PCA + CSP + LDA": pcl_set,
+            "CSP + LDA": cl_set}
+    venn(data)
+    plt.show()
 
     #Make the routing dataset using the validation dataset
     edf_preds = edf.predict_proba(X_val)

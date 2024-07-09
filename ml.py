@@ -43,13 +43,6 @@ def assemble_classifier_LaplacianCSPLDA(n_components, eigenvectors):
     return clf
 
 
-def assemble_classifier_LaplacianFgMDM(n_components, eigenvectors):
-    ed = UnsupervisedSpatialFilter(ED(n_components, eigenvectors), average=False)
-    FgMDM = pyriemann.classification.FgMDM()
-    clf = Pipeline([("ED", ed), ("FgMDM", FgMDM)])
-    return clf
-
-
 if __name__ == '__main__':
     X, y = get_data()
     cv = get_cv()
@@ -90,7 +83,6 @@ if __name__ == '__main__':
     plt.plot(component_numbers, scores, marker='o', linestyle='-', label='CSP+LDA')
 
 
-    #'oas' because: https://github.com/pyRiemann/pyRiemann/issues/65
     print("PCA+FgMDM")
     scores = []
     for n_components in tqdm(component_numbers):

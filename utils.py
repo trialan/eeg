@@ -1,6 +1,22 @@
 import numpy as np
+import random
+import sklearn
+import pyriemann
 from sklearn.model_selection import ShuffleSplit, cross_val_score
 from scipy.stats import boxcox
+
+
+def set_seed(seed=42):
+    np.random.seed(seed)
+    random.seed(seed)
+    sklearn.utils.check_random_state(seed)
+
+
+def get_covariances(M):
+    #'oas' because: https://github.com/pyRiemann/pyRiemann/issues/65
+    cov = pyriemann.estimation.Covariances('oas').fit_transform(M)
+    assert len(cov) == len(M)
+    return cov
 
 
 def results(clf, X, y, cv):

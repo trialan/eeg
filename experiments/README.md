@@ -68,11 +68,27 @@ I call a "router" a model that picks which of our classifiers we should use to c
 
 ![Venn Diagram](https://github.com/trialan/eeg/assets/16582240/ea76f743-e977-4fb2-b42c-bad56752a367)
 
-Actually the above venn diagram (generated using `venn3` is wrong, I'm not sure what it's counting but it has more subjects than there are in the validation set used to generate it, so something is wrong). Correct venn diagrams generated using `venn` are below for 3 and 4 model routing:
+Actually the above venn diagram (generated using `venn3` is wrong, I'm not sure what it's counting but it has more subjects than there are in the validation set used to generate it, so something is wrong). Correct venn diagrams generated using `venn` are below for 3 and 4 model routing. Upper bounds are 82% and 88% respectively.
 
 ![3-model-Venn (corrected)](https://github.com/trialan/eeg/assets/16582240/706ea99b-a63a-4755-824a-bf71c2a2f9ed)
 ![4-model-Venn](https://github.com/trialan/eeg/assets/16582240/cc6db827-2072-458b-8e97-e0d6b1a0dfdb)
 
+### Building a better router
+Given the theoretical upper bounds for performance on this problem if we had a perfect router, it seems worth it to work on improving the router. Here is a first investigation:
+
+![router_F(N)_plot](https://github.com/trialan/eeg/assets/16582240/75dac5ae-dc1f-4ce1-bc50-158459d201a3)
+
+What is very surprising is that when I run `router.py` and try multiple different routers, the best router doesn't result in the best final classification score. Why is that? Makes no sense. Still a lot to figure out about these routers.
+
+```python
+###### CSP+LDA Router score: 0.4166666666666667
+
+###### Meta-clf score (CSP+LDA router): 0.6340782122905028
+
+###### EDFgMDM Router score: 0.4041666666666667
+
+###### Meta-clf score (EDFgMDM router): 0.6634078212290503
+```
 
 
 ### CNNs with time series

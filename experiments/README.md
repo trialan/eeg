@@ -76,7 +76,8 @@ Actually the above venn diagram (generated using `venn3` is wrong, I'm not sure 
 ### Building a better router
 Given the theoretical upper bounds for performance on this problem if we had a perfect router, it seems worth it to work on improving the router. Here is a first investigation:
 
-![router_F(N)_plot](https://github.com/trialan/eeg/assets/16582240/75dac5ae-dc1f-4ce1-bc50-158459d201a3)
+![router_F(N)_full_plot](https://github.com/trialan/eeg/assets/16582240/2abec77f-cad7-4e7d-b53c-6cceefca6fc8)
+
 
 What is very surprising is that when I run `router.py` and try multiple different routers, the best router doesn't result in the best final classification score. Why is that? Makes no sense. Still a lot to figure out about these routers.
 

@@ -1,8 +1,78 @@
 # Experiment write-ups
 
-## Brain-geometry informed experiments
+This section should be helfpul to understand where we are at. Let's order the write-ups by how promising or complete they are.
 
-### Laplacian Spatial Patterns dimensionality reduction
+
+## Routing
+I call a "router" a model that picks which of our classifiers we should use to classify a given $(64,161)$ EEG recording. I think routing may be quite powerful because of this analysis (in `ensemble.py`): consider the set of subjects correctly classified by each of our best models, and see how they differ.
+
+If you sum the number of successfully classified rows in the 4-model venn diagram below you get a theoretical upper bound of 88%. Adding more models increases this bound.
+
+![4-model-Venn](https://github.com/trialan/eeg/assets/16582240/cc6db827-2072-458b-8e97-e0d6b1a0dfdb)
+
+Of course, we don't know that building routers will actually be easier than building classidiers, but it seems like a promising idea. 
+
+I spent a lot of time trying to build CNN-based routers with no success, however an FgMDM based router did work. Below is a plot of a few router architectures, and their accuracy (I don't remember if this was for the 3-model routing problem or the 4-model routing problem, I think it was 3-models).
+
+![router_F(N)_full_plot](https://github.com/trialan/eeg/assets/16582240/2abec77f-cad7-4e7d-b53c-6cceefca6fc8)
+
+As we can see in the results on `router.py` below: the score of the meta-classifier using an FgMDM-based router with 24 eigen-components is an improvement on the Xu et al. top score of 64.2%.
+
+
+```python
+###### CSP+LDA Router score: 0.4166666666666667
+
+###### Meta-clf score (CSP+LDA router): 0.6340782122905028
+
+###### EDFgMDM Router score: 0.4041666666666667
+
+###### Meta-clf score (EDFgMDM router): 0.6634078212290503
+```
+
+_Current question marks:_
+- Why does the router with the best accuracy, namely CSP + LDA, not get the best final score? This makes no sense.
+- Does this result still hold when you do proper 5-fold CV? For ease of implementation, `router.py` does a single fold. This was reasonable to implement the idea, but to be bullet proof it needs to be 5-fold so that we're comparing apples to apples.
+
+
+## Picking specific channels
+Perhaps (as in the fNIRS literature says Nyx) it would help to only use a subset of the channels. So I ran some linear regressions to pick the best channels, and then I train FgMDM models where I only give it the top N channels, N ranges from 1 to 64. This beats vanilla FgMDM by 1.8% with a score of 0.637945 (vs 0.6199 for vanilla FgMDM). Results are plotted below.
+
+![FgMDM (N best channels)](https://github.com/trialan/eeg/assets/16582240/488d5f50-5864-4ea8-974c-dbc4baa87825)
+
+Perhaps we could now do this (top 24 channels) and then do Laplacian + FgMDM (24 eigenmodes) on this (the current best "pure" (non-router based) algo). If that beats Laplacian+FgMDM (24 eigenmodes), then we can put it in the router to have a "best in class" attempt/model. Let's see. I will leave the code in `channel.py` un-touched now, and use another file.
+
+Just to be sure I don't lose the sorting of channels this is the sorting I used in this experiment.
+
+```python
+array([63, 62, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15,
+       14, 13, 12, 11, 10,  9,  8,  7,  6,  5,  4,  3,  2,  1, 30, 31, 32,
+       48, 61, 60, 59, 58, 57, 56, 55, 54, 53, 52, 51, 50, 49, 47, 33, 46,
+       45, 44, 43, 42, 41, 40, 39, 38, 37, 36, 35, 34,  0])
+```
+
+_Current question marks_:
+- Why can't I reproduce this sorted list of channels with the code right now?
+- How do we use this result to improve our overall score? Just putting it as a model in the router doesn't seem to help. Is that right? Can we combine this idea with the Laplacian + FgMDM model of Xu et al. to beat their performance without a router, and then put _that_ in the router?
+
+
+
+## Ordering the eigenvectors
+
+When we look at the plot of performance vs the number of eigenvectors, it seems like some eigenvectors help, and others hurt the score. We haven't yet got a clever way of ordering eigenvectors, but the experiment below, where I do Laplacian + FgMDM with N eigenmodes, but the order of eigenvectors is shuggled, suggests that a clever way of sorting them may yield performance improvements.
+
+One complication with this idea is that some modes help only when in combinaton with othe.
+
+![random_shuffle_eigenvec](https://github.com/trialan/eeg/assets/16582240/8c4d93e5-bcc3-449e-8fc2-4d0ae5f92838)
+
+## Fourier transforming coefficient matrix
+
+![10subjects_3rdEigenmode_AverageOfFourierTransform](https://github.com/trialan/eeg/assets/123100675/d06ca0df-3b80-45f5-b45b-e6acbc8895c9)
+The Fourier transforms of the coefficient of the third eigenmode as a function of time over each epoch in category '0' (probably 'hands') and category '1' for 10 subjects was taken. Then those fourier transforms were averaged. We see two consistent features, a dip in power around 0.1 for '1' and a difference in slope around the tails.
+Here are the fourier transforms of eigenmode decomposition coefficients for the first 20 eigenmodes, orange is for hands, blue is for feet (or vice versa). The FTs for all 'hands' epochs were averaged (for all subjects) and same for feet. Notice eigenmode 16 - it might be used for distinguishing between the two?
+![fourier_galore_allmodes](https://github.com/trialan/eeg/assets/123100675/d37d97f0-bc04-4206-b7e0-ddeb80e4031c)
+
+
+## Laplacian Spatial Patterns dimensionality reduction
 In this experiment I want to: 
 
 1. Re-write the (n_channels, n_times) sub-matrices in the eigenbasis.
@@ -48,67 +118,11 @@ def transform_data(X):
 
 ```
 
-
-
-### Ordering the eigenvectors?
-This experiment below suhggests we may want a clever way of sorting the order in which we add eigenvectors to the reduced-dimensions. This was inspired by AK's comment on
-the fact that some eigenmodes help the score, and others hurt the score. So you'd want to only keep those modes which help the score. However some modes help only when
-in combinaton with other.
-
-![random_shuffle_eigenvec](https://github.com/trialan/eeg/assets/16582240/8c4d93e5-bcc3-449e-8fc2-4d0ae5f92838)
-
-
-### Picking specific channels
-Perhaps (as in the fNIRS literature says Nyx) it would help to only use a subset of the channels. So I ran some linear regressions to pick the best channels, and then I train FgMDM models where I only give it the top N channels, N ranges from 1 to 64. This beats vanilla FgMDM by 1.8% with a score of 0.637945 (vs 0.6199 for vanilla FgMDM). Results are plotted below.
-
-![FgMDM (N best channels)](https://github.com/trialan/eeg/assets/16582240/488d5f50-5864-4ea8-974c-dbc4baa87825)
-
-Perhaps we could now do this (top 24 channels) and then do Laplacian + FgMDM (24 eigenmodes) on this (the current best "pure" (non-router based) algo). If that beats Laplacian+FgMDM (24 eigenmodes), then we can put it in the router to have a "best in class" attempt/model. Let's see. I will leave the code in `channel.py` un-touched now, and use another file.
-
-Just to be sure I don't lose the sorting of channels this is the sorting I used in this experiment.
-
-```python
-array([63, 62, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15,
-       14, 13, 12, 11, 10,  9,  8,  7,  6,  5,  4,  3,  2,  1, 30, 31, 32,
-       48, 61, 60, 59, 58, 57, 56, 55, 54, 53, 52, 51, 50, 49, 47, 33, 46,
-       45, 44, 43, 42, 41, 40, 39, 38, 37, 36, 35, 34,  0])
-```
-
-## ML experiments
-
-### Ensembling
+## Ensembling
 Write up in ensembling.py, tl;dr this wasn't particularly helpful.
 
-### Routing
-I call a "router" a model that picks which of our classifiers we should use to classify a given $(64,161)$ EEG recording. I think routing may be quite powerful because of this analysis (in `ensemble.py`): consider the set of subjects correctly classified by each of our best models, and see how they differ. In the diagram below we see that there are 62+141 subjects correctly classified by 10-component CSP+LDA that 24-component Laplacian+FgMDM (our most powerful model) is unable to correctly label. By summing all the numbers on the diagram we can get a theoretical upper bound (if we had a perfect router model), as there were 1431 subjects in this test set, and in total 1152 of them were classified correctly by at least one classifer, which gives $1152/1431=80.5$% theoretical upper bound for a router between these models. It's hard to build a better model, perhaps it's easier to build a good router?
 
-![Venn Diagram](https://github.com/trialan/eeg/assets/16582240/ea76f743-e977-4fb2-b42c-bad56752a367)
-
-Actually the above venn diagram (generated using `venn3` is wrong, I'm not sure what it's counting but it has more subjects than there are in the validation set used to generate it, so something is wrong). Correct venn diagrams generated using `venn` are below for 3 and 4 model routing. Upper bounds are 82% and 88% respectively.
-
-![3-model-Venn (corrected)](https://github.com/trialan/eeg/assets/16582240/706ea99b-a63a-4755-824a-bf71c2a2f9ed)
-![4-model-Venn](https://github.com/trialan/eeg/assets/16582240/cc6db827-2072-458b-8e97-e0d6b1a0dfdb)
-
-### Building a better router
-Given the theoretical upper bounds for performance on this problem if we had a perfect router, it seems worth it to work on improving the router. Here is a first investigation:
-
-![router_F(N)_full_plot](https://github.com/trialan/eeg/assets/16582240/2abec77f-cad7-4e7d-b53c-6cceefca6fc8)
-
-
-What is very surprising is that when I run `router.py` and try multiple different routers, the best router doesn't result in the best final classification score. Why is that? Makes no sense. Still a lot to figure out about these routers.
-
-```python
-###### CSP+LDA Router score: 0.4166666666666667
-
-###### Meta-clf score (CSP+LDA router): 0.6340782122905028
-
-###### EDFgMDM Router score: 0.4041666666666667
-
-###### Meta-clf score (EDFgMDM router): 0.6634078212290503
-```
-
-
-### CNNs with time series
+## CNNs with time series
 In this experiment I trained CNNs to learn the time series. Why? My logic was: the one trick that sort of worked has been this jittering. Deep learning models are great, but need lots of data. But we don't have that much data. Ok. With jittering we can get infinite amounts of data. So let's start with that. This is the default results (no data augmentation):
 
 ![CNN_raw_100pct](https://github.com/trialan/eeg/assets/16582240/17923583-dee7-4d85-b459-f7b023d4c64d)
@@ -139,7 +153,7 @@ To do this ablation experiment, I re-run the above experiment with 50% less data
                                                    y_train, y_val)
 ```
 
-And this gave the result $$0.6929 \pm 0.0001$. The magnitude on this is a bit hard to interpret but smaller numbers are better, and more data had a smaller number, so the Andrew Ng flowchart gave us the right idea and we will now experiment with data augmentation. Let's 3x the data using jittering. Now, in `jitter_augment.py` we augment the number of electrodes. Here we have evidence for augmenting the number of samples, so let's do that instead. I use the `augment_data` function in `cnn.py`. This is what I get:
+And this gave the result $0.6929 \pm 0.0001$ (which I think was about 50% accuracy, i.e. garbage). The magnitude on this is a bit hard to interpret but smaller numbers are better, and more data had a smaller number, so the Andrew Ng flowchart gave us the right idea and we will now experiment with data augmentation. Let's 3x the data using jittering. Now, in `jitter_augment.py` we augment the number of electrodes. Here we have evidence for augmenting the number of samples, so let's do that instead. I use the `augment_data` function in `cnn.py`. This is what I get:
 
 ![3x_jitter_CNN](https://github.com/trialan/eeg/assets/16582240/fd89b2ff-3a18-4739-addc-0a555080dbe7)
 
@@ -153,28 +167,19 @@ Out[2]: 3.35874317722525e-05
 
 --> This didn't help. That's a bit odd, needs further reflecting.
 
-### Fourier transforming coefficient matrix
-![10subjects_3rdEigenmode_AverageOfFourierTransform](https://github.com/trialan/eeg/assets/123100675/d06ca0df-3b80-45f5-b45b-e6acbc8895c9)
-The Fourier transforms of the coefficient of the third eigenmode as a function of time over each epoch in category '0' (probably 'hands') and category '1' for 10 subjects was taken. Then those fourier transforms were averaged. We see two consistent features, a dip in power around 0.1 for '1' and a difference in slope around the tails.
-Here are the fourier transforms of eigenmode decomposition coefficients for the first 20 eigenmodes, orange is for hands, blue is for feet (or vice versa). The FTs for all 'hands' epochs were averaged (for all subjects) and same for feet. Notice eigenmode 16 - it might be used for distinguishing between the two?
-![fourier_galore_allmodes](https://github.com/trialan/eeg/assets/123100675/d37d97f0-bc04-4206-b7e0-ddeb80e4031c)
-
-
-### Data-augmentation / reduction experiments
+## Data-augmentation / reduction experiments
 Write up as a comment in the code file. Taken's theorem from [this paper](https://arxiv.org/pdf/2403.05645?fbclid=IwZXh0bgNhZW0CMTAAAR1wcNdM6sIvx3LgeoNmmbgoFQp5Tr9sF7Ud651u5KMlQf6zNsX0VNQynHU_aem_rkkPO4cvOQQCELS2vtudVQ)
 ,which does something a bit like FgMDM but more fancy geometric deep learning, is quite interesting. But my take away from the experiment at data_augmentation_experiment.py is that
 this only helped them because they use 3 electrodes, and is unlikely to help us.
 
-### Using SVC instead of LDA
+## Using SVC instead of LDA
 CSP + SVC slightly under-performed CSP+LDA. I attribute this to SVC needing more data, but haven't dug too deep as this seems like a boring idea.
 
-### Investigating these "Common Spatial Patterns"
+## Investigating these "Common Spatial Patterns"
 This comes up a lot in the papers results. Seems like a sort of PCA-but-not-PCA thing for "rotating" the data into a nicer shape for the classifier. Their best two results are
-Laplacian + FgMDM and PCA + FgMDM, i.e. dimensionality reduction trick + FgMDM. Why not CSP + FgMDM? I plotted it below, similar peak performance at 18 components. They probably didn't
-plot it because the curve looks bad.
+Laplacian + FgMDM and PCA + FgMDM, i.e. dimensionality reduction trick + FgMDM. Why not CSP + FgMDM? I plotted it below, similar peak performance at 18 components. They probably didn't plot it because the curve looks bad.
 
 ![CSP+FgMDM](https://github.com/trialan/eeg/assets/16582240/2cf0725b-d9cf-46b9-83c9-5685f8f10641)
 
-The CSP does this thing where it (1) finds the vectors on which to project the data, then it drops the time dimension by taking avg power (avg square of each element), and then
-applying some sort of scaling (either log scaling or z-scaling).
+The CSP does this thing where it (1) finds the vectors on which to project the data, then it drops the time dimension by taking avg power (avg square of each element), and then applying some sort of scaling (either log scaling or z-scaling).
 

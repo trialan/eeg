@@ -8,13 +8,15 @@ I call a "router" a model that picks which of our classifiers we should use to c
 
 If you sum the number of successfully classified rows in the 4-model venn diagram below you get a theoretical upper bound of 88%. Adding more models increases this bound.
 
-![4-model-Venn](https://github.com/trialan/eeg/assets/16582240/cc6db827-2072-458b-8e97-e0d6b1a0dfdb)
-
 Of course, we don't know that building routers will actually be easier than building classidiers, but it seems like a promising idea. 
 
 I spent a lot of time trying to build CNN-based routers with no success, however an FgMDM based router did work. Below is a plot of a few router architectures, and their accuracy (I don't remember if this was for the 3-model routing problem or the 4-model routing problem, I think it was 3-models).
 
-![router_F(N)_full_plot](https://github.com/trialan/eeg/assets/16582240/2abec77f-cad7-4e7d-b53c-6cceefca6fc8)
+
+<p align="center">
+  <img src="https://github.com/trialan/eeg/assets/16582240/cc6db827-2072-458b-8e97-e0d6b1a0dfdb" alt="overnight_run" width="45%" height="300px">
+  <img src="https://github.com/trialan/eeg/assets/16582240/2abec77f-cad7-4e7d-b53c-6cceefca6fc8" alt="Their version" width="45%" height="300px">
+</p>
 
 As we can see in the results on `router.py` below: the score of the meta-classifier using an FgMDM-based router with 24 eigen-components is an improvement on the Xu et al. top score of 64.2%.
 

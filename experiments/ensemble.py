@@ -50,9 +50,10 @@ Experiment 2: score = 62.73%
 
 class OldED(BaseEstimator, TransformerMixin):
     """ Old version of our Eigen-Decomp """
-    def __init__(self, n_components, eigenvectors):
+    def __init__(self, n_components, eigenvectors, hack=False):
         self.n_components = n_components
         self.eigenvectors = eigenvectors
+        self.hack = hack
 
     def fit(self, X, y=None):
         if self.eigenvectors is None:
@@ -62,7 +63,11 @@ class OldED(BaseEstimator, TransformerMixin):
     def transform(self, X):
         n_channels, n_times = X.shape
         selected_eigenvectors = self.eigenvectors[:, :self.n_components]
-        X_transformed = np.dot(X, selected_eigenvectors)
+        # I do not understand why this is necessary :-(
+        if self.hack:
+            X_transformed = np.dot(selected_eigenvectors, X)
+        else:
+            X_transformed = np.dot(X, selected_eigenvectors)
         return X_transformed
 
 

@@ -50,7 +50,7 @@ if __name__ == '__main__':
         lr = LinearRegression()
         lr.fit(X_ap, y)
         scores = cross_val_score(lr, X_ap, y, cv=cv, n_jobs=None)
-        channel_scores.append(score)
+        channel_scores.append(np.mean(scores))
 
     sorted_indices = np.argsort(channel_scores)[::-1]
     sorted_channels = channels[sorted_indices]
@@ -62,6 +62,7 @@ if __name__ == '__main__':
         fgmdm = pyriemann.classification.FgMDM()
         score = results(fgmdm, sub_Xcov, y, cv)
         scores.append(score)
+
     plt.plot(list(range(1, n_channels)), scores,
              marker='o', linestyle='-', label='Best N channels FgMDM')
     plt.axhline(y=0.6199, linestyle='--', label="Traditional FgMDM",

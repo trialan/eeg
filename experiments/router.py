@@ -20,7 +20,7 @@ from eeg.utils import (results, get_cv,
                        avg_power_matrix,
                        get_covariances,
                        set_seed)
-from eeg.experiments.ensemble import EDFgMDM
+from eeg.experiments.ensemble import EDFgMDM, OldED
 from eeg.laplacian import compute_scalp_eigenvectors_and_values
 from eeg.ml import (assemble_classifer_PCACSPLDA,
                     assemble_classifer_CSPLDA,
@@ -40,6 +40,7 @@ def predict_with_router(row, cov_matrix, router):
 
 
 def get_best_classifier(row, cov_matrix, router):
+    """ with fgmdm based routers """
     input_tensor = np.array([cov_matrix])
     router_output = router.predict(input_tensor)[0]
     return router_output
@@ -72,6 +73,8 @@ if __name__ == '__main__':
     print(f"Test y size: {y_test.shape}")
     print("\n")
 
+    1/0
+
     edf = EDFgMDM(n_components=24, eigenvectors=eigenvectors)
     edf.fit(X_train, y_train)
     edf_y_pred = edf.predict(X_test)
@@ -96,21 +99,36 @@ if __name__ == '__main__':
     score = accuracy_score(fgmdm_y_pred, y_test)
     print(f"###### FgMDM score: {score}\n") #0.6229
 
+    sorted_channels = np.array([63, 62, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10,  9,  8,  7,  6,  5,  4,  3,  2,  1, 30, 31, 32, 48, 61, 60, 59, 58, 57, 56, 55, 54, 53, 52, 51, 50, 49, 47, 33, 46, 45, 44, 43, 42, 41, 40, 39, 38, 37, 36, 35, 34,  0])
+    channel_X_train = X_train[:, sorted_channels[:24], :]
+    channel_X_train_cov = get_covariances(channel_X_train)
+    channel_fgmdm = pyriemann.classification.FgMDM()
+    channel_fgmdm.fit(channel_X_train_cov, y_train)
+    channel_X_test_cov = get_covariances(X_test[:, sorted_channels[:24], :])
+    channel_X_val_cov = get_covariances(X_val[:, sorted_channels[:24], :])
+    channel_fgmdm_pred = channel_fgmdm.predict(channel_X_test_cov)
+    score = accuracy_score(channel_fgmdm_pred, y_test)
+    print(f"###### 24-channel FgMDM score: {score}\n")
+
+
     #Make the Venn diagram
     good_edf_subjects = np.where(edf_y_pred == y_test)[0]
     good_pcl_subjects = np.where(pcl_y_pred == y_test)[0]
     good_cl_subjects = np.where(cl_y_pred == y_test)[0]
     good_fgmdm_subjects = np.where(fgmdm_y_pred == y_test)[0]
+    good_channel_subjects = np.where(channel_fgmdm_pred == y_test)[0]
 
     edf_set = set(good_edf_subjects)
     pcl_set = set(good_pcl_subjects)
     cl_set = set(good_cl_subjects)
     fgmdm_set = set(good_fgmdm_subjects)
+    channel_set = set(good_channel_subjects)
 
     data = {"Laplacian + FgMDM": edf_set,
             "PCA + CSP + LDA": pcl_set,
             "CSP + LDA": cl_set,
-            "FgMDM": fgmdm_set}
+            "FgMDM": fgmdm_set,
+            "24-channel FgMDM": channel_set}
     venn(data)
     plt.show()
 
@@ -120,6 +138,7 @@ if __name__ == '__main__':
     pcl_preds = pcl.predict_proba(X_val)
     cl_preds = cl.predict_proba(X_val)
     fgmdm_preds = fgmdm.predict_proba(X_val_cov)
+    channel_preds = channel_fgmdm.predict_proba(channel_X_val_cov)
 
     X_router = X_val
     y_router = np.zeros(len(X_val))
@@ -129,22 +148,26 @@ if __name__ == '__main__':
         prob_2 = pcl_preds[i][1]
         prob_3 = cl_preds[i][1]
         prob_4 = fgmdm_preds[i][1]
+        prob_5 = channel_preds[i][1]
 
         diff_1 = abs(prob_1 - y_val[i])
         diff_2 = abs(prob_2 - y_val[i])
         diff_3 = abs(prob_3 - y_val[i])
         diff_4 = abs(prob_4 - y_val[i])
+        diff_5 = abs(prob_5 - y_val[i])
 
-        best_classifier = np.argmin([diff_1, diff_2, diff_3, diff_4])
+        best_classifier = np.argmin([diff_1, diff_5])
         y_router[i] = best_classifier
 
     #score SHOULD be 43.5%, instead it's 41.1% here. and without
     #the seed it's 40.3%. see router_plots.py
     set_seed()
+
     router = assemble_classifer_CSPLDA(n_components=6)
     router.fit(X_val, y_router)
     score = results(router, X_val_cov, y_router, cv)
     print(f"###### CSP+LDA Router score: {score}\n")
+    #score: 40.83%
 
     y_pred = []
     for ix, row in enumerate(X_test):
@@ -153,12 +176,14 @@ if __name__ == '__main__':
         y_pred.append(out)
     score = accuracy_score(y_pred, y_test)
     print(f"###### Meta-clf score (CSP+LDA router): {score}\n")
+    #score: 63.41%
 
     set_seed()
     router = EDFgMDM(n_components=64, eigenvectors=eigenvectors)
     router.fit(X_val_cov, y_router)
     score = results(router, X_val_cov, y_router, cv)
     print(f"###### EDFgMDM Router score: {score}\n")
+    #score: 40.00%
 
     y_pred = []
     for ix, row in enumerate(X_test):
@@ -167,5 +192,7 @@ if __name__ == '__main__':
         y_pred.append(out)
     score = accuracy_score(y_pred, y_test)
     print(f"###### Meta-clf score (EDFgMDM router): {score}\n")
+    #score: 66.06%
+    #score: 66.34 if you use 5 models (channel_fgmdm)
 
 

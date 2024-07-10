@@ -73,7 +73,6 @@ if __name__ == '__main__':
     print(f"Test y size: {y_test.shape}")
     print("\n")
 
-    1/0
 
     edf = EDFgMDM(n_components=24, eigenvectors=eigenvectors)
     edf.fit(X_train, y_train)

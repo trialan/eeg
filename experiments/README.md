@@ -1,5 +1,57 @@
 # Experiment write-ups
 
+This section should be helfpul to understand where we are at. Let's order the write-ups by how promising or complete they are.
+
+## Experiments that gave positive results
+
+### Routing
+I call a "router" a model that picks which of our classifiers we should use to classify a given $(64,161)$ EEG recording. I think routing may be quite powerful because of this analysis (in `ensemble.py`): consider the set of subjects correctly classified by each of our best models, and see how they differ.
+
+If you sum the number of successfully classified rows in the 4-model venn diagram below you get a theoretical upper bound of 88%. Adding more models increases this bound.
+
+![4-model-Venn](https://github.com/trialan/eeg/assets/16582240/cc6db827-2072-458b-8e97-e0d6b1a0dfdb)
+
+Of course, we don't know that building routers will actually be easier than building classidiers, but it seems like a promising idea. 
+
+I spent a lot of time trying to build CNN-based routers with no success, however an FgMDM based router did work. Below is a plot of a few router architectures, and their accuracy (I don't remember if this was for the 3-model routing problem or the 4-model routing problem, I think it was 3-models).
+
+![router_F(N)_full_plot](https://github.com/trialan/eeg/assets/16582240/2abec77f-cad7-4e7d-b53c-6cceefca6fc8)
+
+As we can see in the results on `router.py` below: the score of the meta-classifier using an FgMDM-based router with 24 eigen-components is an improvement on the Xu et al. top score of 64.2%.
+
+
+```python
+###### CSP+LDA Router score: 0.4166666666666667
+
+###### Meta-clf score (CSP+LDA router): 0.6340782122905028
+
+###### EDFgMDM Router score: 0.4041666666666667
+
+###### Meta-clf score (EDFgMDM router): 0.6634078212290503
+```
+
+* Current question marks: *
+- Why does the router with the best accuracy, namely CSP + LDA, not get the best final score? This makes no sense.
+- Does this result still hold when you do proper 5-fold CV? For ease of implementation, `router.py` does a single fold. This was reasonable to implement the idea, but to be bullet proof it needs to be 5-fold so that we're comparing apples to apples.
+
+### Experiments that are promising but haven't given results yet
+
+#### Ordering the eigenvectors
+
+When we look at the plot of performance vs the number of eigenvectors, it seems like some eigenvectors help, and others hurt the score. We haven't yet got a clever way of ordering eigenvectors, but the experiment below suggests that a clever way of sorting them may yield performance improvements.
+
+One complication with this idea is that some modes help only when in combinaton with othe.
+
+
+![random_shuffle_eigenvec](https://github.com/trialan/eeg/assets/16582240/8c4d93e5-bcc3-449e-8fc2-4d0ae5f92838)
+
+
+## Experiments that gave negative results
+
+
+
+
+
 ## Brain-geometry informed experiments
 
 ### Laplacian Spatial Patterns dimensionality reduction
@@ -50,12 +102,7 @@ def transform_data(X):
 
 
 
-### Ordering the eigenvectors?
-This experiment below suhggests we may want a clever way of sorting the order in which we add eigenvectors to the reduced-dimensions. This was inspired by AK's comment on
-the fact that some eigenmodes help the score, and others hurt the score. So you'd want to only keep those modes which help the score. However some modes help only when
-in combinaton with other.
 
-![random_shuffle_eigenvec](https://github.com/trialan/eeg/assets/16582240/8c4d93e5-bcc3-449e-8fc2-4d0ae5f92838)
 
 
 ### Picking specific channels
@@ -79,33 +126,7 @@ array([63, 62, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15,
 ### Ensembling
 Write up in ensembling.py, tl;dr this wasn't particularly helpful.
 
-### Routing
-I call a "router" a model that picks which of our classifiers we should use to classify a given $(64,161)$ EEG recording. I think routing may be quite powerful because of this analysis (in `ensemble.py`): consider the set of subjects correctly classified by each of our best models, and see how they differ. In the diagram below we see that there are 62+141 subjects correctly classified by 10-component CSP+LDA that 24-component Laplacian+FgMDM (our most powerful model) is unable to correctly label. By summing all the numbers on the diagram we can get a theoretical upper bound (if we had a perfect router model), as there were 1431 subjects in this test set, and in total 1152 of them were classified correctly by at least one classifer, which gives $1152/1431=80.5$% theoretical upper bound for a router between these models. It's hard to build a better model, perhaps it's easier to build a good router?
 
-![Venn Diagram](https://github.com/trialan/eeg/assets/16582240/ea76f743-e977-4fb2-b42c-bad56752a367)
-
-Actually the above venn diagram (generated using `venn3` is wrong, I'm not sure what it's counting but it has more subjects than there are in the validation set used to generate it, so something is wrong). Correct venn diagrams generated using `venn` are below for 3 and 4 model routing. Upper bounds are 82% and 88% respectively.
-
-![3-model-Venn (corrected)](https://github.com/trialan/eeg/assets/16582240/706ea99b-a63a-4755-824a-bf71c2a2f9ed)
-![4-model-Venn](https://github.com/trialan/eeg/assets/16582240/cc6db827-2072-458b-8e97-e0d6b1a0dfdb)
-
-### Building a better router
-Given the theoretical upper bounds for performance on this problem if we had a perfect router, it seems worth it to work on improving the router. Here is a first investigation:
-
-![router_F(N)_full_plot](https://github.com/trialan/eeg/assets/16582240/2abec77f-cad7-4e7d-b53c-6cceefca6fc8)
-
-
-What is very surprising is that when I run `router.py` and try multiple different routers, the best router doesn't result in the best final classification score. Why is that? Makes no sense. Still a lot to figure out about these routers.
-
-```python
-###### CSP+LDA Router score: 0.4166666666666667
-
-###### Meta-clf score (CSP+LDA router): 0.6340782122905028
-
-###### EDFgMDM Router score: 0.4041666666666667
-
-###### Meta-clf score (EDFgMDM router): 0.6634078212290503
-```
 
 
 ### CNNs with time series

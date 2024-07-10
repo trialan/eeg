@@ -58,6 +58,22 @@ in combinaton with other.
 ![random_shuffle_eigenvec](https://github.com/trialan/eeg/assets/16582240/8c4d93e5-bcc3-449e-8fc2-4d0ae5f92838)
 
 
+### Picking specific channels
+Perhaps (as in the fNIRS literature says Nyx) it would help to only use a subset of the channels. So I ran some linear regressions to pick the best channels, and then I train FgMDM models where I only give it the top N channels, N ranges from 1 to 64. This beats vanilla FgMDM by 1.8% with a score of 0.637945 (vs 0.6199 for vanilla FgMDM). Results are plotted below.
+
+![FgMDM (N best channels)](https://github.com/trialan/eeg/assets/16582240/488d5f50-5864-4ea8-974c-dbc4baa87825)
+
+Perhaps we could now do this (top 24 channels) and then do Laplacian + FgMDM (24 eigenmodes) on this (the current best "pure" (non-router based) algo). If that beats Laplacian+FgMDM (24 eigenmodes), then we can put it in the router to have a "best in class" attempt/model. Let's see. I will leave the code in `channel.py` un-touched now, and use another file.
+
+Just to be sure I don't lose the sorting of channels this is the sorting I used in this experiment.
+
+```python
+array([63, 62, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15,
+       14, 13, 12, 11, 10,  9,  8,  7,  6,  5,  4,  3,  2,  1, 30, 31, 32,
+       48, 61, 60, 59, 58, 57, 56, 55, 54, 53, 52, 51, 50, 49, 47, 33, 46,
+       45, 44, 43, 42, 41, 40, 39, 38, 37, 36, 35, 34,  0])
+```
+
 ## ML experiments
 
 ### Ensembling

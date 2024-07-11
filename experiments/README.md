@@ -73,6 +73,9 @@ The Fourier transforms of the coefficient of the third eigenmode as a function o
 Here are the fourier transforms of eigenmode decomposition coefficients for the first 20 eigenmodes, orange is for hands, blue is for feet (or vice versa). The FTs for all 'hands' epochs were averaged (for all subjects) and same for feet. Notice eigenmode 16 - it might be used for distinguishing between the two?
 ![fourier_galore_allmodes](https://github.com/trialan/eeg/assets/123100675/d37d97f0-bc04-4206-b7e0-ddeb80e4031c)
 
+## Upscaling mesh
+![150centr](https://github.com/trialan/eeg/assets/123100675/f4524adf-fe6a-4d13-8a89-f462477e968d)
+Produced by resampling the electrode psoitions so that they remain in the convex hull and new triangles are created.
 
 ## Laplacian Spatial Patterns dimensionality reduction
 In this experiment I want to: 

@@ -2,6 +2,8 @@ import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
 import spharapy.trimesh as tm
 from scipy.spatial import Delaunay, ConvexHull
+from scipy.interpolate import griddata
+from scipy.spatial.transform import Rotation as R
 import spharapy.trimesh as trimesh
 import spharapy.spharabasis as sb
 import spharapy.datasets as sd
@@ -13,6 +15,7 @@ from mne.datasets import eegbci
 from mne.io import concatenate_raws, read_raw_edf
 from mne import pick_types
 from mne.channels import make_standard_montage
+
 
 """
     Based on the spharapy package. Read the tutorial below.
@@ -44,9 +47,12 @@ def get_256D_eigenvectors():
 
 
 def create_triangular_dmesh(xyz_coords):
-    """  Create a mesh using the Delaunay triangulation """
+    """  Create a mesh using the Delaunay triangulation and/or ConvexHull: keep Delaunay approach commented out for now """
     mesh = Delaunay(xyz_coords)
-    mesh = trimesh.TriMesh(mesh.convex_hull, mesh.points)
+    hull = ConvexHull(xyz_coords)
+    print("Created mesh with hull points:", hull.points.shape)
+    print("Created mesh with hull simplices:", hull.simplices.shape)
+    mesh = trimesh.TriMesh(hull.simplices, mesh.points)
     mesh = remove_bottom_of_the_mesh(mesh)
     return mesh
 
@@ -100,6 +106,78 @@ def remove_bottom_of_the_mesh(mesh, N=6):
     return mesh
 
 
+def resample_electrode_positions(xyz_coords, n_vertices, delta):
+    """ Resample the electrode positions to match the desired number of vertices """
+    if len(xyz_coords) == n_vertices:
+        return xyz_coords
+    elif len(xyz_coords) > n_vertices:
+        # Downsample by random selection
+        indices = np.random.choice(len(xyz_coords), n_vertices, replace=False)
+        return xyz_coords[indices]
+    else:
+        # Upsample by adding points within the convex hull
+        return upsample_within_convex_hull(xyz_coords, n_vertices, delta)
+
+
+def upsample_within_convex_hull(xyz_coords, n_vertices, perturbation_scale):
+    vertices = np.copy(xyz_coords)
+    while len(vertices)<n_vertices:
+        vertices = triple_res_via_perturbed_centroids(vertices, perturbation_scale)
+    return vertices
+
+
+def generate_outward_orthogonal_vector(triangle, hull_centroid, perturbation_scale):
+    """Generate a small perturbation vector orthogonal to the plane of the triangle pointing outward."""
+    vec1 = triangle[1] - triangle[0]
+    vec2 = triangle[2] - triangle[0]
+    normal = np.cross(vec1, vec2)
+    normal = normal / np.linalg.norm(normal)
+    
+    # Ensure the normal is pointing outward
+    triangle_centroid = np.mean(triangle, axis=0)
+    direction_to_hull_centroid = hull_centroid - triangle_centroid
+    if np.dot(normal, direction_to_hull_centroid) > 0:
+        normal = -normal  # Invert direction if pointing inward
+    
+    return normal * perturbation_scale  # Small perturbation
+
+
+def triple_res_via_perturbed_centroids(xyz_coords, perturbation_scale):
+    """Upsample the coordinates by adding new points within the convex hull."""
+    original_hull = ConvexHull(xyz_coords)
+    hull_centroid = np.mean(original_hull.points, axis=0)
+    current_hull = original_hull
+    new_coords = np.copy(xyz_coords)
+    simplex_index = 0
+    print("Tripling res, original hull simplices: ", original_hull.simplices.shape)
+    
+    while simplex_index < len(original_hull.simplices):
+            # Get current simplex and its vertices from original hull and coords
+            current_simplex = original_hull.simplices[simplex_index]
+            vertices = xyz_coords[current_simplex]
+            
+            #Generate a random point inside this simplex using barycentric coordinates or take centroid (leave commented for now)
+            new_point = np.mean(vertices, axis=0) #centroid
+            #weights = np.random.dirichlet(np.ones(len(vertices)))
+            #new_point = np.dot(weights, vertices)
+                
+            # Add a small perturbation orthogonal to the simplex and pointing outward
+            perturbation = generate_outward_orthogonal_vector(vertices, hull_centroid, perturbation_scale)
+            new_point = new_point + perturbation
+
+            # Ensure the new point is inside the convex hull
+            combined_points = np.vstack([new_coords, new_point])
+            new_hull = ConvexHull(combined_points)
+
+            if len(new_hull.simplices) > len(current_hull.simplices):
+                new_coords = combined_points
+                current_hull = new_hull  # Update the hull with the new point
+
+            simplex_index += 1
+    
+    return new_coords
+
+
 def length_of_longest_edge(triangle, vertices):
     p1 = vertices[triangle[0]]
     p2 = vertices[triangle[1]]
@@ -121,7 +199,9 @@ def distance(p1, p2):
 def plot_mesh(mesh):
     """ Expects a sphara TriMesh """
     vertices = np.array(mesh.vertlist)
+    print("Plotted vertices: ", vertices.shape)
     triangles = np.array(mesh.trilist)
+    print("Plotted triangles: ", triangles.shape)
     fig = plt.figure()
     fig.subplots_adjust(left=0.02, right=0.98, top=0.98, bottom=0.02)
     ax = fig.add_subplot(projection='3d')
@@ -140,7 +220,7 @@ def plot_mesh(mesh):
 def plot_basis_functions(mesh):
     vertices = np.array(mesh.vertlist)
     triangles = np.array(mesh.trilist)
-    eigenvectors, eigenvalues = compute_scalp_eigenvectors_and_values(mesh)
+    eigenvectors, eigenvalues = _compute_scalp_eigenvectors_and_values(mesh)
 
     figsb1, axes1 = plt.subplots(nrows=7, ncols=7, figsize=(8, 12),
                                  subplot_kw={'projection': '3d'})
@@ -169,7 +249,10 @@ def plot_basis_functions(mesh):
 
 if __name__ == '__main__':
     xyz_coords = get_electrode_coordinates()
-    mesh = create_triangular_dmesh(xyz_coords)
-    eigenvectors, eigenvalues = compute_scalp_eigenvectors_and_values(mesh)
+    resampled_coords = resample_electrode_positions(xyz_coords, 450, 1e-3)
+    mesh = create_triangular_dmesh(resampled_coords)
+    #eigenvectors, eigenvalues = _compute_scalp_eigenvectors_and_values(mesh)
+    #plot_basis_functions(mesh)
+    plot_mesh(mesh)
 
 

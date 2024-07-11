@@ -126,7 +126,7 @@ def upsample_within_convex_hull(xyz_coords, n_vertices, perturbation_scale):
     return vertices
 
 
-def generate_outward_orthogonal_vector(triangle, hull_centroid, delta):
+def generate_outward_orthogonal_vector(triangle, hull_centroid, perturbation_scale):
     """Generate a small perturbation vector orthogonal to the plane of the triangle pointing outward."""
     vec1 = triangle[1] - triangle[0]
     vec2 = triangle[2] - triangle[0]
@@ -139,7 +139,7 @@ def generate_outward_orthogonal_vector(triangle, hull_centroid, delta):
     if np.dot(normal, direction_to_hull_centroid) > 0:
         normal = -normal  # Invert direction if pointing inward
     
-    return normal * delta  # Small perturbation
+    return normal * perturbation_scale  # Small perturbation
 
 
 def triple_res_via_perturbed_centroids(xyz_coords, perturbation_scale):
@@ -249,7 +249,7 @@ def plot_basis_functions(mesh):
 
 if __name__ == '__main__':
     xyz_coords = get_electrode_coordinates()
-    resampled_coords = resample_electrode_positions(xyz_coords, 120, 1e-4)
+    resampled_coords = resample_electrode_positions(xyz_coords, 450, 1e-3)
     mesh = create_triangular_dmesh(resampled_coords)
     #eigenvectors, eigenvalues = _compute_scalp_eigenvectors_and_values(mesh)
     #plot_basis_functions(mesh)

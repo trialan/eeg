@@ -10,7 +10,6 @@ import spharapy.datasets as sd
 import random
 import matplotlib.pyplot as plt
 from sklearn.base import BaseEstimator, TransformerMixin
-
 from mne.datasets import eegbci
 from mne.io import concatenate_raws, read_raw_edf
 from mne import pick_types
@@ -31,7 +30,7 @@ def compute_scalp_eigenvectors_and_values():
 
 
 def _compute_scalp_eigenvectors_and_values(mesh):
-    sphara_basis_unit = sb.SpharaBasis(mesh, 'fem')
+    sphara_basis_unit = sb.SpharaBasis(mesh, 'inv_euclidean')
     eigenvectors, eigenvals = sphara_basis_unit.basis()
     return eigenvectors, eigenvals
 
@@ -106,7 +105,7 @@ def remove_bottom_of_the_mesh(mesh, N=6):
     return mesh
 
 
-def resample_electrode_positions(xyz_coords, n_vertices, delta):
+def resample_electrode_positions(xyz_coords, n_vertices, perturbation_scale):
     """ Resample the electrode positions to match the desired number of vertices """
     if len(xyz_coords) == n_vertices:
         return xyz_coords
@@ -116,7 +115,7 @@ def resample_electrode_positions(xyz_coords, n_vertices, delta):
         return xyz_coords[indices]
     else:
         # Upsample by adding points within the convex hull
-        return upsample_within_convex_hull(xyz_coords, n_vertices, delta)
+        return upsample_within_convex_hull(xyz_coords, n_vertices, perturbation_scale)
 
 
 def upsample_within_convex_hull(xyz_coords, n_vertices, perturbation_scale):
@@ -156,7 +155,7 @@ def triple_res_via_perturbed_centroids(xyz_coords, perturbation_scale):
             current_simplex = original_hull.simplices[simplex_index]
             vertices = xyz_coords[current_simplex]
             
-            #Generate a random point inside this simplex using barycentric coordinates or take centroid (leave commented for now)
+            #Generate a random point inside this simplex using barycentric coordinates or take centroid (leave one commented for now)
             new_point = np.mean(vertices, axis=0) #centroid
             #weights = np.random.dirichlet(np.ones(len(vertices)))
             #new_point = np.dot(weights, vertices)
@@ -249,10 +248,10 @@ def plot_basis_functions(mesh):
 
 if __name__ == '__main__':
     xyz_coords = get_electrode_coordinates()
-    resampled_coords = resample_electrode_positions(xyz_coords, 450, 1e-3)
+    resampled_coords = resample_electrode_positions(xyz_coords, 150, 1e-3)
     mesh = create_triangular_dmesh(resampled_coords)
-    #eigenvectors, eigenvalues = _compute_scalp_eigenvectors_and_values(mesh)
-    #plot_basis_functions(mesh)
+    eigenvectors, eigenvalues = _compute_scalp_eigenvectors_and_values(mesh)
+    plot_basis_functions(mesh)
     plot_mesh(mesh)
 
 

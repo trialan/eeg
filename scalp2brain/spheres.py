@@ -4,6 +4,22 @@ from mpl_toolkits.mplot3d import Axes3D, art3d
 from scipy.spatial import ConvexHull
 
 
+class Brain():
+    def __init__(self,
+                 radius=1,
+                 num_points=100):
+        self.radius = radius
+        self.points, self.faces = generate_sphere_mesh(radius, num_points)
+
+
+class Scalp():
+    def __init__(self,
+                 radius=2,
+                 num_points=100):
+        self.radius = radius
+        self.points, self.faces = generate_sphere_mesh(radius, num_points)
+
+
 def generate_sphere_points(radius, num_points):
     phi = np.random.uniform(0, np.pi, num_points)
     theta = np.random.uniform(0, 2 * np.pi, num_points)

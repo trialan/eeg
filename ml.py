@@ -10,8 +10,7 @@ from sklearn.decomposition import PCA
 from sklearn.pipeline import Pipeline
 
 import pyriemann
-from eeg.laplacian import (compute_scalp_eigenvectors_and_values,
-                           ED)
+from eeg.laplacian import (compute_scalp_eigenvectors_and_values)
 from eeg.utils import results, get_cv
 
 """
@@ -36,7 +35,7 @@ def assemble_classifer_CSPLDA(n_components):
 
 
 def assemble_classifier_LaplacianCSPLDA(n_components, eigenvectors):
-    ed = UnsupervisedSpatialFilter(ED(n_components, eigenvectors), average=False)
+    ed = UnsupervisedSpatialFilter(OldED(n_components, eigenvectors), average=False)
     lda = LinearDiscriminantAnalysis()
     csp = CSP(n_components=n_components, reg=None, log=True, norm_trace=False)
     clf = Pipeline([("ED", ed), ("CSP", csp), ("LDA", lda)])
@@ -55,7 +54,7 @@ if __name__ == '__main__':
     for n_components in tqdm(component_numbers):
         n_epochs, n_channels, n_times = X.shape
         X_reshaped = X.reshape(n_times * n_epochs, n_channels)
-        ed = ED(n_components, eigenvectors)
+        ed = OldED(n_components, eigenvectors)
         X_ed = np.array([ed.transform(epoch.T).T for epoch in X])
         Xcov = pyriemann.estimation.Covariances('oas').fit_transform(X_ed)
 

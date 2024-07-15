@@ -4,8 +4,8 @@ from tqdm import tqdm
 import torch
 from torch.utils.data import DataLoader, TensorDataset, random_split
 
-from eeg.scalp2brain.spheres import Brain, Scalp
-from eeg.scalp2brain.electromag import (Dipole, compute_vector_electric_field,
+from eeg.inverseproblem.spheres import Brain, Scalp
+from eeg.inverseproblem.electromag import (Dipole, compute_vector_electric_field,
                                         convert_to_scalar_field)
 
 

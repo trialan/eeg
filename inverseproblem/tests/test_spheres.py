@@ -1,4 +1,4 @@
-from eeg.scalp2brain.spheres import Brain, Scalp
+from eeg.inverseproblem.spheres import Brain, Scalp
 
 
 def test_brain_and_scalp():

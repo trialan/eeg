@@ -22,7 +22,7 @@ from eeg.utils import (results, get_cv,
                        avg_power_vector,
                        get_covariances,
                        set_seed)
-from eeg.experiments.ensemble import EDFgMDM, OldED
+from eeg.experiments.eigen_fgmdm import EDFgMDM
 from eeg.laplacian import compute_scalp_eigenvectors_and_values
 from eeg.ml import (assemble_classifer_PCACSPLDA,
                     assemble_classifer_CSPLDA,

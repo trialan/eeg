@@ -1,8 +1,8 @@
 import numpy as np
 
-from eeg.scalp2brain.spheres import Brain, Scalp
-from eeg.scalp2brain.data import get_inverse_problem_dataset_np
-from eeg.scalp2brain.test_utils import (its_a_scalar_field, its_a_scalar_field,
+from eeg.inverseproblem.spheres import Brain, Scalp
+from eeg.inverseproblem.data import get_inverse_problem_dataset_np
+from eeg.inverseproblem.test_utils import (its_a_scalar_field, its_a_scalar_field,
                                         we_have_field_at_all_points)
 
 

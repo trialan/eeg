@@ -139,8 +139,7 @@ if __name__ == '__main__':
     ac_real_power_spectrum, frequencies = get_experimental_power_spectrum()
     omegas = 2 * np.pi * frequencies
 
-    #Pick a channel to fit
-    real_power_spectrum = ac_real_power_spectrum[34]
+    real_power_spectrum = np.sum(ac_real_power_spectrum, axis=0)
 
     #Written in this un-intuitive way to fit in with minimize
     initial_params = [("G_ee", 5.4),
@@ -158,4 +157,9 @@ if __name__ == '__main__':
     result = minimize(model_error, initial_params)
     print(result)
 
+    good_model = Model(params = result.x)
+    simulated_power_spectrum = np.array([good_model.power(w) for w in omegas])
+    plt.plot(omegas, real_power_spectrum, color='b')
+    plt.plot(omegas, simulated_power_spectrum, color='r')
+    plt.show()
 

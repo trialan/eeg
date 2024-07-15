@@ -2,14 +2,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D, art3d
 from scipy.spatial import ConvexHull
-
+import spharapy.trimesh as tm
 
 class Brain():
-    def __init__(self,
-                 radius=1,
-                 num_points=100):
+    def __init__(self, radius=1, num_points=100):
         self.radius = radius
-        self.points, self.faces = generate_sphere_mesh(radius, num_points)
+        self.vertices, self.triangles = generate_sphere_mesh(radius, num_points)
+        self.mesh = tm.TriMesh(self.triangles, self.vertices)
 
 
 class Scalp():
@@ -17,7 +16,8 @@ class Scalp():
                  radius=2,
                  num_points=100):
         self.radius = radius
-        self.points, self.faces = generate_sphere_mesh(radius, num_points)
+        self.vertices, self.triangles = generate_sphere_mesh(radius, num_points)
+        self.mesh = tm.TriMesh(self.triangles, self.vertices)
 
 
 def generate_sphere_points(radius, num_points):

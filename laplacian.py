@@ -25,11 +25,11 @@ from mne.channels import make_standard_montage
 def compute_scalp_eigenvectors_and_values():
     xyz_coords = get_electrode_coordinates()
     mesh = create_triangular_dmesh(xyz_coords)
-    eigenvectors, eigenvals = _compute_scalp_eigenvectors_and_values(mesh)
+    eigenvectors, eigenvals = compute_mesh_eigenvectors_and_values(mesh)
     return eigenvectors, eigenvals
 
 
-def _compute_scalp_eigenvectors_and_values(mesh):
+def compute_mesh_eigenvectors_and_values(mesh):
     sphara_basis_unit = sb.SpharaBasis(mesh, 'inv_euclidean')
     eigenvectors, eigenvals = sphara_basis_unit.basis()
     return eigenvectors, eigenvals
@@ -219,7 +219,7 @@ def plot_mesh(mesh):
 def plot_basis_functions(mesh):
     vertices = np.array(mesh.vertlist)
     triangles = np.array(mesh.trilist)
-    eigenvectors, eigenvalues = _compute_scalp_eigenvectors_and_values(mesh)
+    eigenvectors, eigenvalues = compute_mesh_eigenvectors_and_values(mesh)
 
     figsb1, axes1 = plt.subplots(nrows=7, ncols=7, figsize=(8, 12),
                                  subplot_kw={'projection': '3d'})
@@ -250,7 +250,7 @@ if __name__ == '__main__':
     xyz_coords = get_electrode_coordinates()
     resampled_coords = resample_electrode_positions(xyz_coords, 150, 1e-3)
     mesh = create_triangular_dmesh(resampled_coords)
-    eigenvectors, eigenvalues = _compute_scalp_eigenvectors_and_values(mesh)
+    eigenvectors, eigenvalues = compute_mesh_eigenvectors_and_values(mesh)
     plot_basis_functions(mesh)
     plot_mesh(mesh)
 

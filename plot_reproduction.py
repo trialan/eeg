@@ -49,7 +49,7 @@ if __name__ == '__main__':
     cv = get_cv()
     eigenvectors, eigenvals = compute_scalp_eigenvectors_and_values()
 
-    component_numbers = list(range(10, 13))
+    component_numbers = list(range(2, 64))
 
     print("Laplacian+FgMDM")
     scores = []

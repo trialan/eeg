@@ -1,11 +1,8 @@
 # eeg
 Analysis of electroencephalogram data from [physionet](https://physionet.org/about/database/) with a view to reproducing the classification results in [this paper](https://hal.science/hal-03477057/document?fbclid=IwZXh0bgNhZW0CMTAAAR3UzR91MfBHO73CSZWK6QTDI6t0cpbEQHrmT9r8Vazzl9lGhewVMDXYVOY_aem_PxbOW954AyHy0jTub2Wlvw), and then improving them.
 
-## Structure of the repo
-At the top of the repo, we keep the code for reproducing the plot from Xu et al. as well as code useful for all experiments. In `/inverseproblem`, we put our code related to solving the [EEG inverse problem](https://www.fieldtriptoolbox.org/workshop/baci2017/inverseproblem/), this is our current angle for improving on Xu et al.'s results, and is currently under development. In `/experiments` we keep all our experiments, in particular that is where we have `routing_models/meta_clf.py`, our current best performing classifier.
 
-
-## Reproduction of figure 3(a) from Xu et al.
+### Reproduction of figure 3(a) from Xu et al.
 This plot is produced by running `plot_reproduction.py`.
 
 <p align="center">
@@ -14,3 +11,18 @@ This plot is produced by running `plot_reproduction.py`.
 </p>
 
 Notice how in our plot, CSP + LDA is a curve, in there's it's a horizontal line, I believe this is because the curve jumps up to a value after ~5 components and then stays flat, so they chose to just plot the horizontal line to keep the plot more readable.
+
+### Structure of the repo
+At the top of the repo, we keep the code for reproducing the plot from Xu et al. as well as code useful for all experiments. In `/inverseproblem`, we put our code related to solving the [EEG inverse problem](https://www.fieldtriptoolbox.org/workshop/baci2017/inverseproblem/), this is our current angle for improving on Xu et al.'s results, and is currently under development. In `/experiments` we keep all our experiments, in particular that is where we have `routing_models/meta_clf.py`, our current best performing classifier.
+
+
+
+### References
+Xiaoqi Xu, Nicolas Drougard, Raphaelle N Roy. Dimensionality Reduction via the Laplace-Beltrami
+Operator: Application to EEG-based BCI. 2021 10th International IEEE/EMBS Conference on Neural
+Engineering (NER) (2021)
+
+Ou W, Hämäläinen MS, Golland P. A distributed spatio-temporal EEG/MEG inverse solver, Neuroimage (2009) 
+
+R.G. Abeysuriya, P.A. Robinson, Real-time automated EEG tracking of brain states using neural field theory,
+Journal of Neuroscience Methods (2015)

@@ -2,7 +2,7 @@ import cvxpy as cp
 import numpy as np
 
 from eeg.data import get_data
-from eeg.inverseproblem.mne_approach import compute_lead_field_matrix
+from eeg.inverseproblem.leadfield import compute_lead_field_matrix
 
 
 """
@@ -17,7 +17,7 @@ lambda_val = 1e9 #See "Sensitivity to regularization strength" section, p.939
 
 def compute_brain_signal(y):
     """ y is EEG recording, shape (M=64,). S is brain Returns S_opt, (N,). """
-    S = cp.Variable((N, K))
+    S = cp.Variable((A.shape[1], y.shape[1])) #problemo, expects MATRIX Y, not vector y
     prob = setup_optimisation_problem(S, y)
     result = prob.solve()
     S_opt = S.value
@@ -53,5 +53,7 @@ def setup_optimisation_problem(S, y):
 
 
 if __name__ == '__main__':
-
+    X, _ = get_data(1)
+    y = X[0][0]
+    s = compute_brain_signal(y)
 

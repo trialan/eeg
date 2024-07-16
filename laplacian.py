@@ -15,6 +15,8 @@ from mne.io import concatenate_raws, read_raw_edf
 from mne import pick_types
 from mne.channels import make_standard_montage
 
+from eeg import physionet_runs
+
 
 """
     Based on the spharapy package. Read the tutorial below.
@@ -78,7 +80,7 @@ class ED(BaseEstimator, TransformerMixin):
 def get_electrode_coordinates(subject=1):
     """ Get raw EEGMI data from website or locally if already downloaded.
         Filter only EEG channels to get 64 as we expect from Physionet data """
-    raw_fnames = eegbci.load_data(subject, [6,10,14]) #all subjects have same coords
+    raw_fnames = eegbci.load_data(subject, physionet_runs) #all subjects have same coords
     raw = concatenate_raws([read_raw_edf(f, preload=True) for f in raw_fnames])
     eegbci.standardize(raw)  # set channel names
     montage = make_standard_montage("standard_1020")

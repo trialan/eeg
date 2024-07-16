@@ -3,6 +3,7 @@ import numpy as np
 import mne
 from mne.datasets import sample
 
+from eeg import physionet_runs
 from eeg.data import get_raw_data
 
 
@@ -18,16 +19,12 @@ recommend following the video tutorial here:
     PS: for me her solution to allowing the pkg installer to run didn't work, instead i had to run:
 
     sudo xattr -rd com.apple.quarantine /path/to/freesurfer
-
-
-Correct runs are [6,10,14] but bad practice to hard code them, need to clean this up
-
 """
 
 def compute_lead_field_matrix():
     """ Same LF matrix for all subjects since we use avg brain + standard
         electrode positions, so use subject 1 """
-    raw = get_raw_data(1, [6, 10, 14])
+    raw = get_raw_data(1, physionet_runs)
     subject = "sample"
     subjects_dir = mne.datasets.sample.data_path() / 'subjects'
     conductivity = (0.3, 0.006, 0.3)  # for three layers

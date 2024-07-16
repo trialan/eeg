@@ -9,7 +9,14 @@ from mne.datasets import sample
 In this file I simply follow the tutorial at this page:
     https://mne.tools/stable/auto_tutorials/forward/30_forward.html
 
-The object of the tutorial is to compute the lead field matrix with BEM
+The object of the tutorial is to compute the lead field matrix with BEM.
+The only difficult thing to do was to actually set up freesurfer. I
+recommend following the video tutorial here:
+    https://surfer.nmr.mgh.harvard.edu/fswiki/DownloadAndInstall?action=AttachFile&do=get&target=installFS_demo.mp4
+
+    PS: for me her solution to allowing the pkg installer to run didn't work, instead i had to run:
+
+    sudo xattr -rd com.apple.quarantine /path/to/freesurfer
 """
 
 data_path = sample.data_path()

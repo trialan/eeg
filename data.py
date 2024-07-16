@@ -4,6 +4,8 @@ from mne.datasets import eegbci
 from mne.io import concatenate_raws, read_raw_edf
 import numpy as np
 
+from eeg import physionet_runs
+
 
 """
     Physionet (dataset): https://physionet.org/content/eegmmidb/1.0.0/
@@ -19,7 +21,7 @@ def get_data(n_subjects=109, bandpass=True, reststate=False):
     if reststate:
         runs = [1]
     else:
-        runs = [6, 10, 14]
+        runs = physionet_runs
     Xs = []
     ys = []
     for subject in range(1, n_subjects+1):

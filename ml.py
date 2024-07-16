@@ -10,8 +10,10 @@ from sklearn.decomposition import PCA
 from sklearn.pipeline import Pipeline
 
 import pyriemann
-from eeg.laplacian import (compute_scalp_eigenvectors_and_values)
+
+from eeg.laplacian import compute_scalp_eigenvectors_and_values
 from eeg.utils import results, get_cv
+from eeg.experiments.eigen_fgmdm import OldED
 
 """
     This script reproduces fig 3(a) from Xu et. al.
@@ -47,7 +49,7 @@ if __name__ == '__main__':
     cv = get_cv()
     eigenvectors, eigenvals = compute_scalp_eigenvectors_and_values()
 
-    component_numbers = list(range(1, 50))
+    component_numbers = list(range(10, 13))
 
     print("Laplacian+FgMDM")
     scores = []

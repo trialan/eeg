@@ -34,7 +34,7 @@ def run_compute_brain_signal_multithread(X, A):
     num_sub_matrices = X.shape[0]
     with mp.Pool(4) as pool:
         results = pool.starmap(process_sub_matrix, [(X, i, A) for i in range(num_sub_matrices)])
-    return results
+    return np.array(results)
 
 
 def setup_optimisation_problem(S, y, A):
@@ -73,12 +73,16 @@ def process_sub_matrix(X, index, A):
 if __name__ == '__main__':
     A = compute_lead_field_matrix()
     import time
-    X, _ = get_data(1)
+    import pickle
+    X, _ = get_data()
     print("\n #### Beginning the SOCP solving #### \n")
     t0 = time.time()
     S = run_compute_brain_signal_multithread(X, A)
     t1 = time.time()
     print(t1-t0)
+
+    with open('array_data.pkl', 'wb') as file:
+        pickle.dump(S, file)
 
 
 

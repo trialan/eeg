@@ -223,7 +223,7 @@ def plot_basis_functions(mesh):
     triangles = np.array(mesh.trilist)
     eigenvectors, eigenvalues = compute_mesh_eigenvectors_and_values(mesh)
 
-    figsb1, axes1 = plt.subplots(nrows=7, ncols=7, figsize=(8, 12),
+    figsb1, axes1 = plt.subplots(nrows=2, ncols=2, figsize=(8, 12),
                                  subplot_kw={'projection': '3d'})
     for i in range(np.size(axes1)):
         colors = np.mean(eigenvectors[triangles, i + 0], axis=1)

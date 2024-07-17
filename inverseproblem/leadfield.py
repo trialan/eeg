@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import mne
 from mne.datasets import sample
-from eeg.laplacian import plot_mesh
+from eeg.laplacian import plot_mesh, plot_basis_functions
 from eeg import physionet_runs
 from eeg.data import get_raw_data
 import spharapy.trimesh as trimesh
@@ -91,7 +91,8 @@ if __name__ == '__main__':
     #leadfield = compute_lead_field_matrix()
     subjects_dir = mne.datasets.sample.data_path() / 'subjects'
     sphara_meshes = generate_and_convert_bem_surfaces(subject='sample', subjects_dir=subjects_dir)
-    for i, sphara_mesh in enumerate(sphara_meshes):
+    for i,sphara_mesh in enumerate(sphara_meshes):
         print(f"\n#### SpharaPy Mesh {i+1} ####")
         plot_mesh(sphara_meshes[i])
+        plot_basis_functions(sphara_meshes[i])
 

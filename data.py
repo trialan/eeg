@@ -31,7 +31,7 @@ def get_data(n_subjects=109, bandpass=True, reststate=False):
     homogenous_ixs = [i for i in range(len(Xs)) if Xs[i].shape==(64, 161)]
     Xs_homogenous = [Xs[i] for i in homogenous_ixs]
     ys_homogenous = [ys[i] for i in homogenous_ixs]
-    print(f"We kept {len(Xs_homogenous)} of {len(Xs)} EEG recordings")
+    print(f"\n #### Got data: {len(Xs_homogenous)} of {len(Xs)} EEG recordings ####\n")
     return np.array(Xs_homogenous, dtype=np.float64), np.array(ys_homogenous)
 
 

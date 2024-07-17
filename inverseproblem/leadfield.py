@@ -6,7 +6,6 @@ from mne.datasets import sample
 from eeg import physionet_runs
 from eeg.data import get_raw_data
 
-
 """
 In this file I simply follow the tutorial at this page:
     https://mne.tools/stable/auto_tutorials/forward/30_forward.html
@@ -49,6 +48,7 @@ def compute_lead_field_matrix():
                                     n_jobs=1)
 
     leadfield = fwd['sol']['data']
+    print("\n#### Lead Field Matrix Computed ####\n")
     return leadfield
 
 

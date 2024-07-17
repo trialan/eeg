@@ -2,9 +2,44 @@ import matplotlib.pyplot as plt
 import numpy as np
 import mne
 from mne.datasets import sample
-
+from eeg.laplacian import plot_mesh
 from eeg import physionet_runs
 from eeg.data import get_raw_data
+import spharapy.trimesh as trimesh
+
+def generate_and_convert_bem_surfaces(subject='sample', subjects_dir=None):
+    """
+    Generates BEM surfaces using MNE and converts them to SpharaPy format.
+    
+    Parameters:
+    subject (str): Subject identifier.
+    subjects_dir (str): Directory where the subject data is stored.
+    
+    Returns:
+    sphara_meshes (list of SpharaPy Mesh): BEM surfaces in SpharaPy format.
+    """
+    # Set conductivity parameters for scalp, skull, and brain
+    conductivity = (0.3, 0.006, 0.3)
+    
+    # Create BEM model surfaces
+    bem_surfaces = mne.make_bem_model(subject=subject,
+                                      ico=None,
+                                      conductivity=conductivity,
+                                      subjects_dir=subjects_dir)
+    
+    # Convert BEM surfaces to SpharaPy mesh format
+    sphara_meshes = []
+    
+    for surface in bem_surfaces:
+        vertlist = surface['rr']  # Vertex coordinates
+        trilist = surface['tris']   # Triangle faces
+        
+        # Convert to SpharaPy mesh format
+        sphara_mesh = trimesh.TriMesh(trilist, vertlist)
+        sphara_meshes.append(sphara_mesh)
+    
+    return sphara_meshes
+
 
 """
 - conductivity parameters: see Table (1) in "Global sensitivity of EEG
@@ -53,6 +88,10 @@ def compute_lead_field_matrix():
 
 
 if __name__ == '__main__':
-    leadfield = compute_lead_field_matrix()
-
+    #leadfield = compute_lead_field_matrix()
+    subjects_dir = mne.datasets.sample.data_path() / 'subjects'
+    sphara_meshes = generate_and_convert_bem_surfaces(subject='sample', subjects_dir=subjects_dir)
+    for i, sphara_mesh in enumerate(sphara_meshes):
+        print(f"\n#### SpharaPy Mesh {i+1} ####")
+        plot_mesh(sphara_meshes[0])
 

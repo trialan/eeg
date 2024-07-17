@@ -93,5 +93,5 @@ if __name__ == '__main__':
     sphara_meshes = generate_and_convert_bem_surfaces(subject='sample', subjects_dir=subjects_dir)
     for i, sphara_mesh in enumerate(sphara_meshes):
         print(f"\n#### SpharaPy Mesh {i+1} ####")
-        plot_mesh(sphara_meshes[0])
+        plot_mesh(sphara_meshes[i])
 

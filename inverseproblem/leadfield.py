@@ -7,17 +7,17 @@ from eeg import physionet_runs
 from eeg.data import get_raw_data
 
 """
-In this file I simply follow the tutorial at this page:
-    https://mne.tools/stable/auto_tutorials/forward/30_forward.html
+- conductivity parameters: see Table (1) in "Global sensitivity of EEG
+  source analysis to tissue conductivity uncertainties", https://doi.org/10.3389/fnhum.2024.1335212
+    --> values (0.3, 0.006, 0.3), in Siemens/meter are roughly correct (good order of magnitude,
+    good ratio of values). Could be tweaked a bit. Issue is that they can differ quite a bit
+    for each subject (by a factor of 2-3 sometimes).
 
-The object of the tutorial is to compute the lead field matrix with BEM.
-The only difficult thing to do was to actually set up freesurfer. I
-recommend following the video tutorial here:
-    https://surfer.nmr.mgh.harvard.edu/fswiki/DownloadAndInstall?action=AttachFile&do=get&target=installFS_demo.mp4
+- ico parameter: set to None for highest resolution. This parameter controls
+  downsampling.
 
-    PS: for me her solution to allowing the pkg installer to run didn't work, instead i had to run:
+- subject = "sample": 
 
-    sudo xattr -rd com.apple.quarantine /path/to/freesurfer
 """
 
 def compute_lead_field_matrix():
@@ -26,9 +26,9 @@ def compute_lead_field_matrix():
     raw = get_raw_data(1, physionet_runs)
     subject = "sample"
     subjects_dir = mne.datasets.sample.data_path() / 'subjects'
-    conductivity = (0.3, 0.006, 0.3)  # for three layers
+    conductivity = (0.3, 0.006, 0.3)
     model = mne.make_bem_model(subject=subject, #is this OK??
-                               ico=4,
+                               ico=None,
                                conductivity=conductivity,
                                subjects_dir=subjects_dir)
     bem = mne.make_bem_solution(model)

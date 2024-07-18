@@ -1,6 +1,9 @@
+import time
+from tqdm import tqdm
 import cvxpy as cp
 import numpy as np
 import multiprocessing as mp
+import pickle
 
 from eeg.data import get_data
 from eeg.inverseproblem.leadfield import compute_lead_field_matrix
@@ -21,20 +24,13 @@ these lecture notes: people.eecs.berkeley.edu/~elghaoui/Teaching/EE227A/lecture1
 lambda_val = 1e9 #See "Sensitivity to regularization strength" section, p.939
 
 
-def compute_brain_signal(y, A):
+def compute_brain_signal(y, A, solver=cp.MOSEK):
     """ y is EEG recording, shape (n_channels, n_times). S is brain Returns S_opt, (n_sources, n_times). """
     S = cp.Variable((A.shape[1], y.shape[1]))
     prob = setup_optimisation_problem(S, y, A)
-    result = prob.solve(solver=cp.MOSEK)
+    result = prob.solve(solver=solver)
     S_opt = S.value
     return S_opt
-
-
-def run_compute_brain_signal_multithread(X, A):
-    num_sub_matrices = X.shape[0]
-    with mp.Pool(4) as pool:
-        results = pool.starmap(process_sub_matrix, [(X, i, A) for i in range(num_sub_matrices)])
-    return np.array(results)
 
 
 def setup_optimisation_problem(S, y, A):
@@ -65,24 +61,26 @@ def setup_optimisation_problem(S, y, A):
     return prob
 
 
-def process_sub_matrix(X, index, A):
-    Y = X[index]
-    S_opt = compute_brain_signal(Y, A)
-    return S_opt
-
 if __name__ == '__main__':
     A = compute_lead_field_matrix()
-    import time
-    import pickle
     X, _ = get_data()
+
     print("\n #### Beginning the SOCP solving #### \n")
-    t0 = time.time()
-    S = run_compute_brain_signal_multithread(X, A)
-    t1 = time.time()
-    print(t1-t0)
+    brain_signals = []
+    for Y in tqdm(X):
+        U, S, VT = np.linalg.svd(Y, full_matrices=False)
+        Psi_Y = VT.T
+
+        K = 3
+        Psi_Y_reduced = Psi_Y[:, :K]
+        Y_transformed_reduced = np.dot(Y, Psi_Y_reduced)
+
+        s = compute_brain_signal(Y_transformed_reduced,
+                                             A, solver=cp.MOSEK)
+        brain_signals.append(s)
+    S = np.array(brain_signals)
 
     with open('array_data.pkl', 'wb') as file:
         pickle.dump(S, file)
-
 
 

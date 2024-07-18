@@ -10,8 +10,10 @@ from eeg.data import get_data
 from eeg.experiments.eigen_fgmdm import EDFgMDM
 from eeg.laplacian import compute_scalp_eigenvectors_and_values
 from eeg.utils import results, get_cv, get_covariances, get_fraction
-from eeg.ml import (assemble_classifer_PCACSPLDA,
-                    assemble_classifer_CSPLDA)
+from eeg.plot_reproduction import (
+    assemble_classifer_PCACSPLDA,
+    assemble_classifer_CSPLDA,
+)
 from eeg.experiments.channel_selection.channels import get_sorted_channels
 
 """
@@ -104,7 +106,7 @@ cutoff_CL = 0.2054181690938479
 def predict_with_router(row, cov_matrix, channel_cov_matrix, router):
     chosen_classifier = get_best_classifier(row, cov_matrix, router)
     if chosen_classifier == 0:
-        #edf model
+        # edf model
         return edf.predict(np.array([row]))[0]
     elif chosen_classifier == 1:
         return scf.predict(np.array([channel_cov_matrix]))[0]
@@ -117,9 +119,9 @@ def predict_with_router(row, cov_matrix, channel_cov_matrix, router):
     else:
         edf_proba = edf.predict_proba(np.array([row]))[0]
         scf_proba = scf.predict_proba(np.array([channel_cov_matrix]))[0]
-        #look at probability it's 1, if that's over 0.5 -> answer is 1
-        #else answer is zero
-        ensemble_proba = (edf_proba[1] + scf_proba[1]) / 2.
+        # look at probability it's 1, if that's over 0.5 -> answer is 1
+        # else answer is zero
+        ensemble_proba = (edf_proba[1] + scf_proba[1]) / 2.0
         return round(ensemble_proba)
 
 
@@ -154,12 +156,12 @@ def generate_datasets(X, y, cv):
         X_train, X_test = X[train_index], X[test_index]
         y_train, y_test = y[train_index], y[test_index]
 
-        datasets.append((X_train, y_train,  X_test, y_test))
+        datasets.append((X_train, y_train, X_test, y_test))
     return datasets
 
 
-if __name__ == '__main__':
-    X, y = get_data()
+if __name__ == "__main__":
+    X, y = get_data(5)
     cv = get_cv()
     eigenvectors, eigenvals = compute_scalp_eigenvectors_and_values()
     datasets = generate_datasets(X, y, cv)
@@ -175,7 +177,7 @@ if __name__ == '__main__':
 
     for i, (X_train, y_train, X_test, y_test) in tqdm(enumerate(datasets)):
 
-        #Train a EDFgMDM classifier
+        # Train a EDFgMDM classifier (laplacian + fgmdm)
         print("Training EDFgMDM")
         edf = EDFgMDM(n_components=24, eigenvectors=eigenvectors)
         edf.fit(X_train, y_train)
@@ -183,7 +185,7 @@ if __name__ == '__main__':
         edf_score = accuracy_score(edf_y_pred, y_test)
         edf_scores.append(edf_score)
 
-        #Train a 20-channel FgMDM classifier
+        # Train a 20-channel FgMDM classifier
         print("20C-FgMDM")
         channel_X_train = X_train[:, sorted_channels[:20], :]
         channel_X_train_cov = get_covariances(channel_X_train)
@@ -197,7 +199,7 @@ if __name__ == '__main__':
         scf_score = accuracy_score(scf_y_pred, y_test)
         scf_scores.append(scf_score)
 
-        #Train FgMDM
+        # Train FgMDM
         print("Training FgMDM")
         Xcov = get_covariances(X_train)
         Xcov_test = get_covariances(X_test)
@@ -207,7 +209,7 @@ if __name__ == '__main__':
         f_score = accuracy_score(f_y_pred, y_test)
         f_scores.append(f_score)
 
-        #Train PCA+CSP+LDA
+        # Train PCA+CSP+LDA
         print("Training PCL")
         pcl = assemble_classifer_PCACSPLDA(n_components=42)
         pcl.fit(X_train, y_train)
@@ -215,8 +217,7 @@ if __name__ == '__main__':
         pcl_score = accuracy_score(pcl_y_pred, y_test)
         pcl_scores.append(pcl_score)
 
-
-        #Train CSP+LDA
+        # Train CSP+LDA
         print("Training CL")
         cl = assemble_classifer_CSPLDA(n_components=10)
         cl.fit(X_train, y_train)
@@ -224,8 +225,7 @@ if __name__ == '__main__':
         cl_score = accuracy_score(cl_y_pred, y_test)
         cl_scores.append(cl_score)
 
-
-        #Make a Venn diagram of which model is predicting what correctly
+        # Make a Venn diagram of which model is predicting what correctly
         good_edf_subjects = np.where(edf_y_pred == y_test)[0]
         good_scf_subjects = np.where(scf_y_pred == y_test)[0]
         good_f_subjects = np.where(f_y_pred == y_test)[0]
@@ -238,15 +238,17 @@ if __name__ == '__main__':
         pcl_set = set(good_pcl_subjects)
         cl_set = set(good_cl_subjects)
 
-        data = {"Laplacian + FgMDM": edf_set,
-                "24-channel FgMDM": scf_set,
-                "FgMDM": f_set,
-                "PCA+CSP+LDA (n=42)": pcl_set,
-                "CSP+LDA (n=10)": cl_set}
+        data = {
+            "Laplacian + FgMDM": edf_set,
+            "24-channel FgMDM": scf_set,
+            "FgMDM": f_set,
+            "PCA+CSP+LDA (n=42)": pcl_set,
+            "CSP+LDA (n=10)": cl_set,
+        }
         venn(data)
         plt.show()
 
-        #Make a routing labels dataset (y_router)
+        # Make a routing labels dataset (y_router)
         X_router = X_train
         channel_X_router_cov = channel_X_train_cov
 
@@ -274,8 +276,7 @@ if __name__ == '__main__':
             best_classifier = np.argmin([diff_1, diff_2, diff_3, diff_4, diff_5])
             y_router[i] = best_classifier
 
-
-        #Train a router using this dataset
+        # Train a router using this dataset
         router = EDFgMDM(n_components=64, eigenvectors=eigenvectors)
         router.fit(Xcov, y_router)
         router_score = results(router, Xcov, y_router, cv)
@@ -284,16 +285,16 @@ if __name__ == '__main__':
         channel_X_test = X_test[:, sorted_channels[:20], :]
         channel_X_test_cov = get_covariances(channel_X_test)
 
-        #Get a meta-clf score
+        1 / 0
+        # Get a meta-clf score
         y_pred = []
         choices = []
         for ix, row in enumerate(X_test):
             channel_cov_matrix = channel_X_test_cov[ix]
             cov_matrix = Xcov[ix]
-            choice = get_best_classifier(row, cov_matrix, router)
+            choice = OLD_get_best_classifier(row, cov_matrix, router)
             choices.append(choice)
-            out = predict_with_router(row, cov_matrix,
-                                      channel_cov_matrix, router)
+            out = predict_with_router(row, cov_matrix, channel_cov_matrix, router)
             y_pred.append(out)
         score = accuracy_score(y_pred, y_test)
         meta_clf_scores.append(score)
@@ -305,5 +306,3 @@ if __name__ == '__main__':
     print(f"Mean FgMDM score: {np.mean(f_scores)}")
     print(f"Mean PCL score: {np.mean(pcl_scores)}")
     print(f"Mean CL score: {np.mean(cl_scores)}")
-
-

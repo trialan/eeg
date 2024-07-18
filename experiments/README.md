@@ -31,6 +31,8 @@ As we can see in the results on `router.py` below: the score of the meta-classif
 ###### Meta-clf score (EDFgMDM router): 0.6634078212290503
 ```
 
+*EDIT* This 66% is wrong, this was pre-5 fold validation implementation, we now know that this is still an improvement, but only about 1.1% improvement over laplacian+FgMDM.
+
 _Current question marks:_
 - Why does the router with the best accuracy, namely CSP + LDA, not get the best final score? This makes no sense.
 - Does this result still hold when you do proper 5-fold CV? For ease of implementation, `router.py` does a single fold. This was reasonable to implement the idea, but to be bullet proof it needs to be 5-fold so that we're comparing apples to apples.

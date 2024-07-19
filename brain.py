@@ -13,8 +13,9 @@ import pyriemann
 
 from eeg.data import get_data
 from eeg.laplacian import compute_scalp_eigenvectors_and_values
-from eeg.utils import results, get_cv
+from eeg.utils import results, get_cv, avg_power_matrix
 from eeg.experiments.eigen_fgmdm import OldED
+from eeg.plot_reproduction import assemble_classifer_CSPLDA
 from tqdm import tqdm
 
 
@@ -25,33 +26,25 @@ def load_np_array_from_pkl(file_path):
 
 
 if __name__ == '__main__':
-    #_, y = get_data()
+    _, y = get_data()
     cv = get_cv()
 
-    X = load_np_array_from_pkl("array_data.pkl")
+    S_raw = load_np_array_from_pkl('array_data.pkl')
+    S = np.array([avg_power_matrix(m) for m in S_raw])
 
-    print(f"LENGTH: {len(X)}")
-    sub_X = np.array_split(X, 10)
+    n_components = 10
+    clf = assemble_classifer_CSPLDA(n_components)
+    score = results(clf, S, y, cv)
 
-    sub_covs = []
-    for i, sub in tqdm(enumerate(sub_X)):
-        Xcov = pyriemann.estimation.Covariances('oas').fit_transform(sub)
-        with open(f'cov_data_{i}.pkl', 'wb') as file:
-            pickle.dump(Xcov, file)
-
-    #FgMDM = pyriemann.classification.FgMDM()
-    #FgMDM_score = results(FgMDM, Xcov, y, cv)
-    #print(FgMDM_score)
     """
-    import glob
-    files = glob.glob("*.pkl")
+    files = glob.glob("covariance_matrices/*.pkl")
     np_arrays = []
-    files = sorted(files, key=lambda x: int(x.split('_')[2].split('.')[0]))
-    for file_path in files[:-1]:
-        with open(file_path, 'rb') as file:
-            np_array = pickle.load(file)
-            np_arrays.append(np_array)
+    for file in files:
+        array = load_np_array_from_pkl(file)
+        np_arrays.append(array)
+    Xcov = np.array(np_arrays)
+
+    FgMDM = pyriemann.classification.FgMDM()
+    FgMDM_score = results(FgMDM, Xcov, y, cv)
+    print(FgMDM_score)
     """
-
-
-

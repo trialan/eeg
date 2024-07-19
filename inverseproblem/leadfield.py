@@ -1,45 +1,10 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import mne
-from mne.datasets import sample
-from eeg.laplacian import plot_mesh, plot_basis_functions
+from eeg.laplacian import plot_mesh, plot_basis_functions, create_triangular_dmesh
 from eeg import physionet_runs
 from eeg.data import get_raw_data
 import spharapy.trimesh as trimesh
-
-def generate_and_convert_bem_surfaces(subject='sample', subjects_dir=None):
-    """
-    Generates BEM surfaces using MNE and converts them to SpharaPy format.
-    
-    Parameters:
-    subject (str): Subject identifier.
-    subjects_dir (str): Directory where the subject data is stored.
-    
-    Returns:
-    sphara_meshes (list of SpharaPy Mesh): BEM surfaces in SpharaPy format.
-    """
-    # Set conductivity parameters for scalp, skull, and brain
-    conductivity = (0.3, 0.006, 0.3)
-    
-    # Create BEM model surfaces
-    bem_surfaces = mne.make_bem_model(subject=subject,
-                                      ico=None,
-                                      conductivity=conductivity,
-                                      subjects_dir=subjects_dir)
-    
-    # Convert BEM surfaces to SpharaPy mesh format
-    sphara_meshes = []
-    
-    for surface in bem_surfaces:
-        vertlist = surface['rr']  # Vertex coordinates
-        trilist = surface['tris']   # Triangle faces
-        
-        # Convert to SpharaPy mesh format
-        sphara_mesh = trimesh.TriMesh(trilist, vertlist)
-        sphara_meshes.append(sphara_mesh)
-    
-    return sphara_meshes
-
 
 """
 - conductivity parameters: see Table (1) in "Global sensitivity of EEG
@@ -56,20 +21,24 @@ def generate_and_convert_bem_surfaces(subject='sample', subjects_dir=None):
 """
 
 def compute_lead_field_matrix():
-    """ Same LF matrix for all subjects since we use avg brain + standard
-        electrode positions, so use subject 1 """
+    fwd = compute_forward_solution()
+    leadfield = fwd['sol']['data']
+    print("\n#### Lead Field Matrix Computed ####\n")
+    return leadfield
+
+def compute_forward_solution():
     raw = get_raw_data(1, physionet_runs)
     subject = "sample"
     subjects_dir = mne.datasets.sample.data_path() / 'subjects'
     conductivity = (0.3, 0.006, 0.3)
     model = mne.make_bem_model(subject=subject, #is this OK??
-                               ico=None,
+                               ico=4,
                                conductivity=conductivity,
                                subjects_dir=subjects_dir)
     bem = mne.make_bem_solution(model)
     src = mne.setup_source_space(subject,
-                                 spacing='oct4',
-                                 add_dist='patch',
+                                 spacing='ico4',
+                                 add_dist=False,
                                  subjects_dir=subjects_dir)
 
     trans = 'fsaverage'  # ?
@@ -79,18 +48,62 @@ def compute_lead_field_matrix():
                                     bem=bem,
                                     meg=False,
                                     eeg=True,
-                                    mindist=5.0,
+                                    mindist=0.0,
                                     n_jobs=1)
 
-    leadfield = fwd['sol']['data']
-    print("\n#### Lead Field Matrix Computed ####\n")
-    return leadfield
+    print("\n#### Forward Solution Computed ####\n")
+    return fwd
 
+def return_source_locations(fwd):
+    # Extract the source space coordinates from the forward solution
+    src = fwd['src']
+    vertices = [s['rr'][s['vertno']] for s in src]
+    vertices = np.vstack(vertices)
+    return vertices
+
+def generate_and_convert_bem_surfaces(subject, subjects_dir):
+    """
+    Generates BEM surfaces using MNE and converts them to SpharaPy format.
+    
+    Parameters:
+    subject (str): Subject identifier.
+    subjects_dir (str): Directory where the subject data is stored.
+    
+    Returns:
+    sphara_meshes (list of SpharaPy Mesh): BEM surfaces in SpharaPy format.
+    """
+    # Set conductivity parameters for scalp, skull, and brain
+    conductivity = (0.3, 0.006, 0.3)
+    # Create BEM model surfaces
+    bem_model = mne.make_bem_model(subject=subject,
+                                      ico=4,
+                                      conductivity=conductivity,
+                                      subjects_dir=subjects_dir)
+    # Convert BEM surfaces to SpharaPy mesh format
+    sphara_meshes = []
+    for surface in bem_model:
+        vertlist = surface['rr']  # Vertex coordinates
+        trilist = surface['tris']   # Triangle faces
+        
+        # Convert to SpharaPy mesh format
+        sphara_mesh = trimesh.TriMesh(trilist, vertlist)
+        sphara_meshes.append(sphara_mesh)
+    return sphara_meshes    
 
 if __name__ == '__main__':
-    #leadfield = compute_lead_field_matrix()
+    fwd = compute_forward_solution()
+    source_vertices = return_source_locations(fwd)
+    mesh = create_triangular_dmesh(source_vertices)
+    plot_mesh(mesh)
+
+    fwd_fixed = mne.convert_forward_solution(
+                fwd, surf_ori=True, force_fixed=True, use_cps=True
+                )
+    leadfield = fwd_fixed["sol"]["data"]
+    print("Leadfield matrix shape: ", leadfield.shape)
+    
     subjects_dir = mne.datasets.sample.data_path() / 'subjects'
-    sphara_meshes = generate_and_convert_bem_surfaces(subject='sample', subjects_dir=subjects_dir)
+    sphara_meshes = generate_and_convert_bem_surfaces('sample', subjects_dir)
     for i,sphara_mesh in enumerate(sphara_meshes):
         print(f"\n#### SpharaPy Mesh {i+1} ####")
         plot_mesh(sphara_meshes[i])

@@ -18,6 +18,9 @@ from eeg.experiments.eigen_fgmdm import OldED
 from eeg.plot_reproduction import assemble_classifer_CSPLDA
 from tqdm import tqdm
 
+from sklearn.svm import SVC
+from sklearn.model_selection import cross_val_score
+from sklearn.preprocessing import StandardScaler
 
 def load_np_array_from_pkl(file_path):
     with open(file_path, 'rb') as file:
@@ -32,9 +35,13 @@ if __name__ == '__main__':
     S_raw = load_np_array_from_pkl('array_data.pkl')
     S = np.array([avg_power_matrix(m) for m in S_raw])
 
-    n_components = 10
-    clf = assemble_classifer_CSPLDA(n_components)
-    score = results(clf, S, y, cv)
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+
+    svm_clf = SVC(kernel='linear', C=1)
+    score = results(svm_clf, X_scaled, y, cv)
+    print(score)
+
 
     """
     files = glob.glob("covariance_matrices/*.pkl")

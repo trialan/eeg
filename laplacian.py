@@ -226,7 +226,7 @@ def plot_basis_functions(mesh):
     figsb1, axes1 = plt.subplots(nrows=2, ncols=2, figsize=(8, 12),
                                  subplot_kw={'projection': '3d'})
     for i in range(np.size(axes1)):
-        colors = np.mean(eigenvectors[triangles, i + 0], axis=1)
+        colors = np.mean(eigenvectors[triangles, i + 20], axis=1)
         ax = axes1.flat[i]
         ax.set_xlabel('x')
         ax.set_ylabel('y')

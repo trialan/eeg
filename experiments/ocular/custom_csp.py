@@ -22,99 +22,18 @@ instead of transforming into average_power, transforms into features
 """
 
 
-def band_power(data, sf, band, window_sec=None, relative=False):
-    """Compute the average power of the signal in a specific frequency band."""
-    band = np.asarray(band)
-    low, high = band
+class FeatureExtractor(BaseEstimator, TransformerMixin):
+    """ (Separate) Can be used in a sklearn Pipeline """
+    def __init__(self, feats_extractor):
+        self.sf = 160 #sampling frequency in Hz
+        self.feats_extractor = feats_extractor
 
-    # Calculate PSD using Welch's method
-    psds, freqs = psd_array_welch(data, sfreq=sf, fmin=low, fmax=high, n_per_seg=window_sec*sf if window_sec else None)
+    def fit(self, X, y=None):
+        # No fitting necessary, so we just return self
+        return self
 
-    # Select the frequencies of interest
-    freq_res = freqs[1] - freqs[0]  # Frequency resolution
-    idx_band = np.logical_and(freqs >= low, freqs <= high)
-
-    # Compute band power
-    band_power = psds[:, idx_band].mean(axis=1)
-
-    if relative:
-        band_power /= psds.sum(axis=1, keepdims=True)
-
-    return band_power
-
-
-def dwt_band_power(data, wavelet='db4', level=4):
-    """Compute the band power using Discrete Wavelet Transform."""
-    coeffs = pywt.wavedec(data, wavelet, level=level)
-    power = np.array([np.sum(c ** 2) for c in coeffs[1:]])
-    return power
-
-
-def dwt_coherence(data1, data2, sf, wavelet='db4', level=4):
-    """Compute coherence using DWT between two signals."""
-    coeffs1 = pywt.wavedec(data1, wavelet, level=level)
-    coeffs2 = pywt.wavedec(data2, wavelet, level=level)
-    coherence_values = []
-    for c1, c2 in zip(coeffs1[1:], coeffs2[1:]):
-        f, Cxy = coherence(c1, c2, sf)
-        coherence_values.append(np.mean(Cxy))
-    return np.array(coherence_values)
-
-
-def dwt_plv(data1, data2, wavelet='db4', level=4):
-    """Compute phase locking value (PLV) using DWT between two signals."""
-    coeffs1 = pywt.wavedec(data1, wavelet, level=level)
-    coeffs2 = pywt.wavedec(data2, wavelet, level=level)
-    plv_values = []
-    for c1, c2 in zip(coeffs1[1:], coeffs2[1:]):
-        phase1 = np.angle(hilbert(c1))
-        phase2 = np.angle(hilbert(c2))
-        plv = np.abs(np.mean(np.exp(1j * (phase1 - phase2))))
-        plv_values.append(plv)
-    return np.array(plv_values)
-
-
-def wavelet_entropy(data, wavelet='db4', level=4):
-    """Compute the wavelet entropy of the signal."""
-    coeffs = pywt.wavedec(data, wavelet, level=level)
-
-    def shannon_entropy(signal):
-        """Compute the Shannon entropy of a signal."""
-        signal = np.abs(signal)
-        signal = signal[signal > 0]  # Filter out zero values to avoid log(0)
-        prob = signal / signal.sum()
-        return -np.sum(prob * np.log2(prob))
-
-    entropy = np.array([shannon_entropy(c) for c in coeffs[1:]])
-    return entropy.mean()
-
-
-def hjorth_parameters(data):
-    """Compute Hjorth parameters: activity, mobility, and complexity."""
-    first_deriv = np.diff(data)
-    second_deriv = np.diff(first_deriv)
-    activity = np.var(data)
-    mobility = np.sqrt(np.var(first_deriv) / activity)
-    complexity = np.sqrt(np.var(second_deriv) / np.var(first_deriv)) / mobility
-    return activity, mobility, complexity
-
-
-def fractal_dimension(data):
-    """Compute the fractal dimension of the signal."""
-    L = []
-    x = np.array(range(1, len(data) + 1))
-    y = data
-    N = len(x)
-    for k in range(2, int(N/2)):
-        Lk = []
-        for m in range(k):
-            Lmk = 0
-            for i in range(1, int(np.floor((N-m)/k))):
-                Lmk += abs(y[m+i*k] - y[m+(i-1)*k])
-            Lmk = (Lmk * (N - 1) / (np.floor((N - m) / k) * k)) / k
-            Lk.append(Lmk)
-        L.append(np.log(np.mean(Lk)))
-    return np.polyfit(np.log(range(2, int(N/2))), L, 1)[0]
+    def transform(self, X):
+        return self.feats_extractor(X, self.sf)
 
 
 @fill_doc
@@ -125,12 +44,14 @@ class CustomCSP(TransformerMixin, BaseEstimator):
         reg=None,
         log=None,
         cov_est="concat",
+        feats_extractor=None,
         transform_into="feats",
         norm_trace=False,
         cov_method_params=None,
         rank=None,
         component_order="mutual_info",
     ):
+        self.feats_extractor = feats_extractor
         # Init default CSP
         if not isinstance(n_components, int):
             raise ValueError("n_components must be an integer.")
@@ -237,7 +158,7 @@ class CustomCSP(TransformerMixin, BaseEstimator):
                 X -= self.mean_
                 X /= self.std_
         if self.transform_into == "feats":
-            X = extract_features(X)
+            X = self.feats_extractor(X)
         return X
 
     @copy_doc(TransformerMixin.fit_transform)
@@ -478,61 +399,5 @@ def _ajd_pham(X, eps=1e-6, max_iter=15):
             break
     D = np.reshape(A, (n_times, -1, n_times)).transpose(1, 0, 2)
     return V, D
-
-
-def extract_features(X, sf=160):
-    """Extract features from the EEG data."""
-    N, C, T = X.shape
-    band = (8, 30)  # Mu and Beta rhythms
-    window_sec = 2
-    features = np.zeros((N, 12+C))
-    for i in range(N):
-        # Band Power
-        bp = band_power(X[i], sf, band, window_sec)
-        features[i, 0] = bp.mean()
-
-        # DWT-Band Power
-        dwt_bp = dwt_band_power(X[i, 8])  # C3
-        features[i, 1] = dwt_bp.mean()
-
-        # DWT-Coherence
-        dwt_coh = dwt_coherence(X[i, 8], X[i, 12], sf)  # C3 and C4
-        features[i, 2] = dwt_coh.mean()
-
-        dwt_plv_val = dwt_plv(X[i, 8], X[i, 23])  # C3 and Fz
-        features[i, 3] = dwt_plv_val.mean()
-
-        # 5. Wavelet Entropy
-        we = wavelet_entropy(X[i, 8])  # C3
-        features[i, 4] = we
-
-        # 6. Hjorth Parameters
-        activity, mobility, complexity = hjorth_parameters(X[i, 8])  # C3
-        features[i, 5] = activity
-        features[i, 6] = mobility
-        features[i, 7] = complexity
-
-        # 7. Fractal Dimension
-        fd = fractal_dimension(X[i, 8])  # C3
-        features[i, 8] = fd
-
-        # 8. PSD in Theta Band (4-7 Hz)
-        theta_bp = band_power(X[i], sf, (4, 7), window_sec)
-        features[i, 9] = theta_bp.mean()
-
-        # 9. PAC (Phase-Amplitude Coupling)
-        phase_amp_coupling = np.abs(np.mean(np.exp(1j * (np.angle(hilbert(X[i, 8]))) * np.abs(hilbert(X[i, 8])))))  # C3
-        features[i, 10] = phase_amp_coupling
-
-        # 10. Signal-to-Noise Ratio (SNR) in Mu and Beta Band
-        snr = np.mean(bp) / np.mean(X[i, 8])
-        features[i, 11] = snr
-
-        # Log average power of each channel
-        avg_power = (X[i] ** 2).mean(axis=1)
-        avg_power = np.log(avg_power)
-        features[i, 12:] = avg_power
-
-    return features
 
 

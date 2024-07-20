@@ -4,6 +4,7 @@ from pyentrp import entropy as ent
 from scipy.signal import coherence, hilbert
 from mne.time_frequency import psd_array_welch
 
+
 def band_power(data, sf, band, window_sec=None, relative=False):
     """Compute the average power of the signal in a specific frequency band."""
     band = np.asarray(band)

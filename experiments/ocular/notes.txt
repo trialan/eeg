@@ -1,5 +1,40 @@
 NOTES ON OCULAR ARTIFACT / FEATURE EXPERIMENTS
 
+*  current state: 64.19%
+
+*  adding more hjorth parameters for C4 and Fz: reduces score to 63.22%
+
+*  the most important feature according to xgboost feature importance
+   is the 22nd, i.e. the avg log power of one of the channels.
+
+   Now let's do PCA, ICA, ED and give log avg power of these.
+
+   with PCA added: 63.82%
+   with ICA as well: 64.19%
+   with ED as well: 63.02%  <-- curieux?
+   with PCA + ED (not ICA): 62.62%
+
+   Ok, we keep the PCA and ICA features. Next what?
+
+
+*   The feature that really helped the performance of the LDA was:DWT-BP.
+    Why was this feature so good?
+
+    - it computes the band power on the C3 channel
+    --> this suggests that C3 is very important. Perhaps I should compute
+        a few more features related to C3 (C3 is like "odds" perhaps)
+    - they use C3 because it's over the part of the cortext (LHS) that controls
+      right hand movement. Cz is good for feet, and C4 for left hand. Let's do
+      all these and see.
+
+
+        Starting point: 62.83%
+        Adding DWT power of C4 and Cz made no difference.
+
+
+==========================================================
+
+
 This was all prompted by this paper:
 https://www.scirp.org/journal/paperinformation?paperid=77330
 

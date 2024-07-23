@@ -18,6 +18,13 @@ def compute_lead_field_matrix():
     print("\n#### Lead Field Matrix Computed ####\n")
     return leadfield
 
+def compute_lead_field_matrix_():
+    fwd = compute_forward_solution()
+    fwd_fixed = mne.convert_forward_solution(fwd, surf_ori=True, force_fixed=True, use_cps=True) #magic conversion that brings matrix back to Nchannels to Nsources (?)
+    leadfield = fwd_fixed['sol']['data']
+    print("\n#### Lead Field Matrix Computed ####\n")
+    return leadfield
+
 def compute_forward_solution():
     raw = get_raw_data(1, physionet_runs)
     subject = "sample"
@@ -44,7 +51,7 @@ def compute_forward_solution():
                                     n_jobs=1)
 
     print("\n#### Forward Solution Computed ####\n")
-    return model, fwd
+    return fwd
 
 def generate_and_convert_bem_surfaces(subject, subjects_dir):
     # Set conductivity parameters for scalp, skull, and brain
@@ -317,13 +324,8 @@ if __name__ == '__main__':
     #plot_basis_functions(sp`hara_mesh)
     #plot_mesh(decimated_sphara_mesh)
 
-    #fwd_fixed = mne.convert_forward_solution(
-         #       fwd, surf_ori=True, force_fixed=True, use_cps=True
-          #      )
-    #leadfield = fwd_fixed["sol"]["data"]
-    #print("Leadfield matrix shape: ", leadfield.shape)
-    #leadfield = compute_lead_field_matrix()
-    #print("SHAPE:",leadfield.shape)
+    leadfield = compute_lead_field_matrix_()
+    print("SHAPE:",leadfield.shape)
     #subjects_dir = mne.datasets.sample.data_path() / 'subjects'
     #for i,sphara_mesh in enumerate(sphara_meshes):
     #    print(f"\n#### SpharaPy Mesh {i+1} ####")

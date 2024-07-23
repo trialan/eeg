@@ -8,7 +8,7 @@ from eeg.laplacian import plot_mesh, plot_basis_functions, create_triangular_dme
 from eeg import physionet_runs
 from eeg.data import get_raw_data
 import spharapy.trimesh as trimesh
-from scipy.interpolate import Rbf
+from scipy.interpolate import Rbf, griddata
 from mpl_toolkits.mplot3d import Axes3D
 
 def compute_lead_field_matrix():
@@ -94,7 +94,6 @@ def reconstruct_curved_surface_and_delaunay(coords):
     Delaunay object: The Delaunay triangulation of the surface.
     """
 
-    # Convert coordinates to a NumPy array if it isn't already
     coords = np.array(coords)
     x, y, z = coords[:, 0], coords[:, 1], coords[:, 2]
     
@@ -103,23 +102,27 @@ def reconstruct_curved_surface_and_delaunay(coords):
     yi = np.linspace(y.min(), y.max(), 100)
     xi, yi = np.meshgrid(xi, yi)
     
-    # Interpolate the surface using RBF
-    rbf = Rbf(x, y, z, function='multiquadric', smooth=0.1)
-    zi = rbf(xi, yi)
+    # Interpolate the surface using griddata
+    zi = griddata((x, y), z, (xi, yi), method='cubic')
     
     # Flatten the grid for Delaunay triangulation
     points2D = np.vstack([xi.flatten(), yi.flatten()]).T
     points3D = np.vstack([xi.flatten(), yi.flatten(), zi.flatten()]).T
     
-    # Perform Delaunay triangulation on the interpolated surface
-    tri = Delaunay(points2D)
+    # Remove NaN values which may appear due to interpolation
+    mask = ~np.isnan(points3D[:, 2])
+    points2D = points2D[mask]
+    points3D = points3D[mask]
     
-    # Plot the original points and the interpolated surface with the Delaunay mesh
+    # Perform Delaunay triangulation on the interpolated surface
+    tri = Delaunay(points2D) 
+    
+      # Plot the original points and the interpolated surface with the Delaunay mesh
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
     # Plot the interpolated surface
-    ax.plot_surface(xi, yi, zi, cmap='viridis', alpha=0.7)
+    #ax.plot_surface(xi, yi, zi, cmap='viridis', alpha=0.7)
 
     # Plot the original points
     ax.scatter(x, y, z, color='r', s=20)
@@ -136,7 +139,36 @@ def reconstruct_curved_surface_and_delaunay(coords):
 
     plt.show()
 
-    return tri
+
+def setup_subject_source_space(subject, subjects_dir, spacing='oct6'):
+    src = mne.setup_source_space(subject, spacing=spacing, subjects_dir=subjects_dir, add_dist=False)
+    return src
+
+def load_pial_surface(subject, subjects_dir, hemisphere):
+    surface_path = f'{subjects_dir}/{subject}/surf/{hemisphere}.pial'
+    vertices, triangles = mne.read_surface(surface_path)
+    return vertices, triangles
+
+def combine_hemisphere_surfaces(vertices_lh, triangles_lh, vertices_rh, triangles_rh):
+    vertices = np.vstack((vertices_lh, vertices_rh))
+    triangles = np.vstack((triangles_lh, triangles_rh + len(vertices_lh)))
+    return vertices, triangles
+
+def plot_cortical_surface_and_sources(vertices, triangles, src):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    ax.plot_trisurf(vertices[:, 0], vertices[:, 1], vertices[:, 2], triangles=triangles, edgecolor='k', linewidth=0.2, color='lightgrey', alpha=0.5)
+
+    for hemi in src:
+        rr = hemi['rr'][hemi['inuse'].astype(bool)]
+        ax.scatter(rr[:, 0], rr[:, 1], rr[:, 2], s=30, c='b', alpha=0.7)
+
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+
+    plt.show()
 
 
 def plot_bem_and_sources(subject, subjects_dir, src):
@@ -144,14 +176,24 @@ def plot_bem_and_sources(subject, subjects_dir, src):
 
 
 if __name__ == '__main__':
-    model, fwd = compute_forward_solution()
-    src=fwd['src']
+    #model, fwd = compute_forward_solution()
+    #src=fwd['src']
     #subjects_dir = mne.datasets.sample.data_path() / 'subjects'
     #sphara_meshes = generate_and_convert_bem_surfaces('sample', subjects_dir)
-    vertices = return_source_locations(fwd)
-    plot_vertices(vertices)
-    tri = reconstruct_curved_surface_and_delaunay(vertices)
+    #source_vertices = return_source_locations(fwd)
+    #plot_vertices(source_vertices)
+    #tri = reconstruct_curved_surface_and_delaunay(source_vertices)
 
+    data_path = mne.datasets.sample.data_path()
+    subjects_dir = data_path / 'subjects'
+    subject = 'sample'
+    src = setup_subject_source_space(subject, subjects_dir, spacing='oct6')
+    vertices_lh, triangles_lh = load_pial_surface(subject, subjects_dir, 'lh')
+    vertices_rh, triangles_rh = load_pial_surface(subject, subjects_dir, 'rh')
+    vertices, triangles = combine_hemisphere_surfaces(vertices_lh, triangles_lh, vertices_rh, triangles_rh)
+    mesh = create_triangular_dmesh(vertices)
+    plot_mesh(mesh)
+    plot_cortical_surface_and_sources(vertices, triangles, src)
 
     #fwd_fixed = mne.convert_forward_solution(
          #       fwd, surf_ori=True, force_fixed=True, use_cps=True

@@ -11,7 +11,9 @@ This plot is produced by running `plot_reproduction.py`.
 </p>
 
 Notice how in our plot, CSP + LDA is a curve, in their's it's a horizontal line, I believe this is because the curve jumps up to a value after ~5 components and then stays flat, so they chose to just plot the horizontal line to keep the plot more readable.
-
+<p align="left">
+  <img src="https://github.com/user-attachments/assets/82d2e22e-f72d-4daa-bc3e-8ef14992988a">
+</p>
 ### Structure of the repo
 At the top of the repo, we keep the code for reproducing the plot from Xu et al. as well as code useful for all experiments. In `/inverseproblem`, we put our code related to solving the [EEG inverse problem](https://www.fieldtriptoolbox.org/workshop/baci2017/inverseproblem/), this is our current angle for improving on Xu et al.'s results, and is currently under development. In `/experiments` we keep all our experiments, in particular that is where we have `routing_models/meta_clf.py`, our current best performing classifier.
 

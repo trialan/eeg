@@ -2,7 +2,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pyvista as pv
 import mne
-from mayavi import mlab
 from scipy.spatial import Delaunay, ConvexHull
 from eeg.laplacian import plot_mesh, plot_basis_functions, create_triangular_dmesh, resample_electrode_positions
 from eeg import physionet_runs
@@ -10,6 +9,8 @@ from eeg.data import get_raw_data
 import spharapy.trimesh as trimesh
 from scipy.interpolate import Rbf, griddata
 from mpl_toolkits.mplot3d import Axes3D
+import nibabel as nib
+from mne.transforms import apply_trans
 
 def compute_lead_field_matrix():
     fwd = compute_forward_solution()
@@ -157,18 +158,38 @@ def combine_hemisphere_surfaces(vertices_lh, triangles_lh, vertices_rh, triangle
 def plot_cortical_surface_and_sources(vertices, triangles, src):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-
+    print(vertices)
     ax.plot_trisurf(vertices[:, 0], vertices[:, 1], vertices[:, 2], triangles=triangles, edgecolor='k', linewidth=0.2, color='lightgrey', alpha=0.5)
 
     for hemi in src:
         rr = hemi['rr'][hemi['inuse'].astype(bool)]
+        rr = normalize_vertices(rr)
         ax.scatter(rr[:, 0], rr[:, 1], rr[:, 2], s=30, c='b', alpha=0.7)
-
+        print(rr)
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
     ax.set_zlabel('Z')
 
     plt.show()
+
+
+def PVlot_cortical_surface_and_sources(vertices, triangles, src):
+    # Create PyVista mesh for plotting
+    mesh = pv.PolyData(vertices, np.hstack([np.full((triangles.shape[0], 1), 3), triangles]).astype(int))
+    
+    # Initialize plotter
+    plotter = pv.Plotter()
+    
+    # Add mesh to plotter
+    plotter.add_mesh(mesh, color='lightgrey', opacity=0.5, show_edges=True, edge_color='black', line_width=0.5)
+    
+    # Add source points to plotter
+    for hemi in src:
+        rr = hemi['rr'][hemi['inuse'].astype(bool)]
+        plotter.add_points(rr, color='red', point_size=10)
+    
+    # Show plot
+    plotter.show()
 
 
 def plot_bem_and_sources(subject, subjects_dir, src):
@@ -189,6 +210,84 @@ def decimate_mesh(vertices, triangles, reduction_factor=0.5):
     return decimated_vertices, decimated_triangles
 
 
+def plot_mesh_and_sources(mesh, src):
+    """ Expects a sphara TriMesh """
+    vertices = np.array(mesh.vertlist)
+    print("Plotted vertices: ", vertices.shape)
+    triangles = np.array(mesh.trilist)
+    print("Plotted triangles: ", triangles.shape)
+    fig = plt.figure()
+    fig.subplots_adjust(left=0.02, right=0.98, top=0.98, bottom=0.02)
+    ax = fig.add_subplot(projection='3d')
+    ax.set_xlabel('x')
+    ax.set_ylabel('y')
+    ax.set_zlabel('z')
+    ax.set_title('SpharaPy Mesh')
+    ax.view_init(elev=20., azim=80.)
+    ax.set_aspect('auto')
+    ax.plot_trisurf(vertices[:, 0], vertices[:, 1], vertices[:, 2],
+                    triangles=triangles, color='lightblue', edgecolor='black',
+                    linewidth=0.5, shade=True, alpha=1)
+    # Get source locations
+    src_vertices = [s['rr'][s['vertno']] for s in src]
+    src_vertices = np.vstack(src_vertices)
+    ax.scatter(src_vertices[:, 0], src_vertices[:, 1], src_vertices[:, 2], color='r')
+    plt.show()
+
+
+
+def read_xfm(xfm_path):
+    matrix = []
+    with open(xfm_path, 'r') as file:
+        lines = file.readlines()
+        # Look for the lines containing the transformation matrix
+        matrix_lines_started = False
+        for line in lines:
+            if line.strip().startswith('Linear_Transform'):
+                matrix_lines_started = True
+                continue
+            if matrix_lines_started:
+                if line.strip() == '':
+                    break
+                # Split line on spaces and semicolons, and filter out empty strings
+                values = [x for x in line.strip().replace(';', '').split() if x]
+                matrix.append([float(x) for x in values])
+    if len(matrix) != 3:
+        raise ValueError(f"Unexpected number of lines for transformation matrix: {len(matrix)}")
+    # Add the last row for homogeneous coordinates
+    matrix.append([0, 0, 0, 1])
+    return np.array(matrix)
+
+
+def transform_to_mri_coordinates(vertices, subject, subjects_dir):
+    # Load the transformation matrix from the .xfm file
+    xfm_path = f'{subjects_dir}/{subject}/mri/transforms/talairach.xfm'
+    xfm_matrix = read_xfm(xfm_path)
+
+    # Apply the transformation matrix
+    vertices_mri = apply_trans(xfm_matrix, vertices)
+    return vertices_mri
+
+def normalize_vertices(vertices):
+    """
+    Normalize the vertex coordinates to be centered around the origin and fit within a unit sphere.
+
+    Parameters:
+    vertices (numpy.ndarray): Array of vertex coordinates with shape (n_vertices, 3).
+
+    Returns:
+    numpy.ndarray: Normalized vertex coordinates.
+    """
+    # Center the vertices by subtracting the mean
+    centered_vertices = vertices - np.mean(vertices, axis=0)
+
+    # Scale the vertices to fit within a unit sphere
+    max_distance = np.max(np.linalg.norm(centered_vertices, axis=1))
+    normalized_vertices = centered_vertices / max_distance
+
+    return normalized_vertices
+
+
 if __name__ == '__main__':
     #model, fwd = compute_forward_solution()
     #src=fwd['src']
@@ -206,12 +305,17 @@ if __name__ == '__main__':
     vertices_rh, triangles_rh = load_pial_surface(subject, subjects_dir, 'rh')
     vertices, triangles = combine_hemisphere_surfaces(vertices_lh, triangles_lh, vertices_rh, triangles_rh)
     
-    sphara_mesh = trimesh.TriMesh(triangles, vertices)
-    decimated_vert, decimated_tria = decimate_mesh(vertices, triangles, 0.95)
+    # Transform vertices to MRI coordinates using the correct transformation file
+    vertices_mri = transform_to_mri_coordinates(vertices, subject, subjects_dir) 
+    norm_vert = normalize_vertices(vertices_mri)
+    #sphara_mesh = trimesh.TriMesh(triangles, vertices_mri)
+    decimated_vert, decimated_tria = decimate_mesh(norm_vert, triangles, 0.95)
     decimated_sphara_mesh = trimesh.TriMesh(decimated_tria, decimated_vert)
+    
     #plot_basis_functions(sphara_mesh)
-    plot_mesh(decimated_sphara_mesh)
-    #plot_cortical_surface_and_sources(vertices, triangles, src)
+    #plot_mesh(decimated_sphara_mesh)
+    #plot_mesh_and_sources(decimated_sphara_mesh, src)
+    plot_cortical_surface_and_sources(decimated_vert, decimated_tria, src)
 
     #fwd_fixed = mne.convert_forward_solution(
          #       fwd, surf_ori=True, force_fixed=True, use_cps=True

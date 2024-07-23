@@ -1,25 +1,15 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import pyvista as pv
 import mne
+from mayavi import mlab
 from scipy.spatial import Delaunay, ConvexHull
 from eeg.laplacian import plot_mesh, plot_basis_functions, create_triangular_dmesh
 from eeg import physionet_runs
 from eeg.data import get_raw_data
 import spharapy.trimesh as trimesh
-
-"""
-- conductivity parameters: see Table (1) in "Global sensitivity of EEG
-  source analysis to tissue conductivity uncertainties", https://doi.org/10.3389/fnhum.2024.1335212
-    --> values (0.3, 0.006, 0.3), in Siemens/meter are roughly correct (good order of magnitude,
-    good ratio of values). Could be tweaked a bit. Issue is that they can differ quite a bit
-    for each subject (by a factor of 2-3 sometimes).
-
-- ico parameter: set to None for highest resolution. This parameter controls
-  downsampling.
-
-- subject = "sample": 
-
-"""
+from scipy.interpolate import Rbf
+from mpl_toolkits.mplot3d import Axes3D
 
 def compute_lead_field_matrix():
     fwd = compute_forward_solution()
@@ -53,51 +43,14 @@ def compute_forward_solution():
                                     n_jobs=1)
 
     print("\n#### Forward Solution Computed ####\n")
-    return fwd
-
-def return_source_locations(fwd):
-    # Extract the source space coordinates from the forward solution
-    src = fwd['src']
-    vertices = [s['rr'][s['vertno']] for s in src]
-    vertices = np.vstack(vertices)
-    return vertices
-
-def plot_source_surface(fwd):
-    # Extract the source space coordinates from the forward solution
-    src = fwd['src']
-    vertices = [s['rr'][s['vertno']] for s in src]
-    vertices = np.vstack(vertices)
-
-    # Create a Delaunay triangulation of the vertices
-    tri = Delaunay(vertices)
-
-    # Create the plot using mayavi
-    mlab.figure(size=(800, 800), bgcolor=(1, 1, 1))
-    mlab.triangular_mesh(vertices[:, 0], vertices[:, 1], vertices[:, 2], tri.simplices,
-                         colormap='Spectral', opacity=0.6)
-    mlab.points3d(vertices[:, 0], vertices[:, 1], vertices[:, 2],
-                  color=(1, 0, 0), scale_factor=0.005)
-    mlab.xlabel('X')
-    mlab.ylabel('Y')
-    mlab.zlabel('Z')
-    mlab.show()
+    return model, fwd
 
 def generate_and_convert_bem_surfaces(subject, subjects_dir):
-    """
-    Generates BEM surfaces using MNE and converts them to SpharaPy format.
-    
-    Parameters:
-    subject (str): Subject identifier.
-    subjects_dir (str): Directory where the subject data is stored.
-    
-    Returns:
-    sphara_meshes (list of SpharaPy Mesh): BEM surfaces in SpharaPy format.
-    """
     # Set conductivity parameters for scalp, skull, and brain
     conductivity = (0.3, 0.006, 0.3)
     # Create BEM model surfaces
     bem_model = mne.make_bem_model(subject=subject,
-                                      ico=4,
+                                      ico=None,
                                       conductivity=conductivity,
                                       subjects_dir=subjects_dir)
     # Convert BEM surfaces to SpharaPy mesh format
@@ -111,22 +64,103 @@ def generate_and_convert_bem_surfaces(subject, subjects_dir):
         sphara_meshes.append(sphara_mesh)
     return sphara_meshes    
 
+
+def plot_vertices(vertices):
+    fig = plt.figure()
+    fig.subplots_adjust(left=0.02, right=0.98, top=0.98, bottom=0.02)
+    ax = fig.add_subplot(projection='3d')
+    ax.scatter(vertices[:, 0], vertices[:, 1], vertices[:, 2], color='r')
+    ax.set_xlabel('x')
+    ax.set_ylabel('y')
+    ax.set_zlabel('z')
+    plt.show()
+
+
+def return_source_locations(fwd):
+    src = fwd['src']
+    vertices = [s['rr'][s['vertno']] for s in src]
+    vertices = np.vstack(vertices)
+    return vertices
+
+
+def reconstruct_curved_surface_and_delaunay(coords):
+    """
+    Reconstruct a curved surface from a set of 3D coordinates and create a Delaunay mesh.
+
+    Parameters:
+    coords (array-like): An array of shape (n, 3) representing the x, y, z coordinates of the points.
+
+    Returns:
+    Delaunay object: The Delaunay triangulation of the surface.
+    """
+
+    # Convert coordinates to a NumPy array if it isn't already
+    coords = np.array(coords)
+    x, y, z = coords[:, 0], coords[:, 1], coords[:, 2]
+    
+    # Create a grid for interpolation
+    xi = np.linspace(x.min(), x.max(), 100)
+    yi = np.linspace(y.min(), y.max(), 100)
+    xi, yi = np.meshgrid(xi, yi)
+    
+    # Interpolate the surface using RBF
+    rbf = Rbf(x, y, z, function='multiquadric', smooth=0.1)
+    zi = rbf(xi, yi)
+    
+    # Flatten the grid for Delaunay triangulation
+    points2D = np.vstack([xi.flatten(), yi.flatten()]).T
+    points3D = np.vstack([xi.flatten(), yi.flatten(), zi.flatten()]).T
+    
+    # Perform Delaunay triangulation on the interpolated surface
+    tri = Delaunay(points2D)
+    
+    # Plot the original points and the interpolated surface with the Delaunay mesh
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Plot the interpolated surface
+    ax.plot_surface(xi, yi, zi, cmap='viridis', alpha=0.7)
+
+    # Plot the original points
+    ax.scatter(x, y, z, color='r', s=20)
+
+    # Plot the Delaunay edges
+    for simplex in tri.simplices:
+        simplex = np.append(simplex, simplex[0])  # Cycle back to the first vertex
+        ax.plot(points3D[simplex, 0], points3D[simplex, 1], points3D[simplex, 2], 'r-', lw=0.5)
+    
+    # Label axes
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+
+    plt.show()
+
+    return tri
+
+
+def plot_bem_and_sources(subject, subjects_dir, src):
+        mne.viz.plot_bem(subject=subject, subjects_dir=subjects_dir, src=src, orientation='coronal')
+
+
 if __name__ == '__main__':
-    #fwd = compute_forward_solution(3)
-    #plot_source_surface(fwd)
-    #source_vertices = return_source_locations(fwd)
-    #mesh = create_triangular_dmesh(source_vertices)
-    #plot_mesh(mesh)
+    model, fwd = compute_forward_solution()
+    src=fwd['src']
+    #subjects_dir = mne.datasets.sample.data_path() / 'subjects'
+    #sphara_meshes = generate_and_convert_bem_surfaces('sample', subjects_dir)
+    vertices = return_source_locations(fwd)
+    plot_vertices(vertices)
+    tri = reconstruct_curved_surface_and_delaunay(vertices)
+
 
     #fwd_fixed = mne.convert_forward_solution(
          #       fwd, surf_ori=True, force_fixed=True, use_cps=True
           #      )
     #leadfield = fwd_fixed["sol"]["data"]
     #print("Leadfield matrix shape: ", leadfield.shape)
-    leadfield = compute_lead_field_matrix()
-    print("SHAPE:",leadfield.shape)
+    #leadfield = compute_lead_field_matrix()
+    #print("SHAPE:",leadfield.shape)
     #subjects_dir = mne.datasets.sample.data_path() / 'subjects'
-    #sphara_meshes = generate_and_convert_bem_surfaces('sample', subjects_dir)
     #for i,sphara_mesh in enumerate(sphara_meshes):
     #    print(f"\n#### SpharaPy Mesh {i+1} ####")
     #    plot_mesh(sphara_meshes[i])

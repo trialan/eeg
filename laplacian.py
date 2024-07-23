@@ -107,7 +107,7 @@ def remove_bottom_of_the_mesh(mesh, N=6):
     return mesh
 
 
-def resample_electrode_positions(xyz_coords, n_vertices, perturbation_scale):
+def resample_electrode_positions(xyz_coords, n_vertices, perturbation_scale=1e-3):
     """ Resample the electrode positions to match the desired number of vertices """
     if len(xyz_coords) == n_vertices:
         return xyz_coords
@@ -209,7 +209,7 @@ def plot_mesh(mesh):
     ax.set_xlabel('x')
     ax.set_ylabel('y')
     ax.set_zlabel('z')
-    ax.set_title('The triangulated EEG sensor setup')
+    ax.set_title('SpharaPy Mesh')
     ax.view_init(elev=20., azim=80.)
     ax.set_aspect('auto')
     ax.plot_trisurf(vertices[:, 0], vertices[:, 1], vertices[:, 2],

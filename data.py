@@ -15,26 +15,6 @@ from eeg import physionet_runs
 
 tmin, tmax = 1.0, 2.0
 
-
-def get_data(n_subjects=109, bandpass=True, reststate=False):
-    """ Set n_subjects to a small number for testing, 109 for full dataset """
-    if reststate:
-        runs = [1]
-    else:
-        runs = physionet_runs
-    Xs = []
-    ys = []
-    for subject in range(1, n_subjects+1):
-        X, y = get_formatted_data(subject, bandpass, runs)
-        Xs.extend(X)
-        ys.extend(y)
-    homogenous_ixs = [i for i in range(len(Xs)) if Xs[i].shape==(64, 161)]
-    Xs_homogenous = [Xs[i] for i in homogenous_ixs]
-    ys_homogenous = [ys[i] for i in homogenous_ixs]
-    print(f"\n #### Got data: {len(Xs_homogenous)} of {len(Xs)} EEG recordings ####\n")
-    return np.array(Xs_homogenous, dtype=np.float64), np.array(ys_homogenous)
-
-
 def get_formatted_data(subject, bandpass, runs):
     """ Band pass filter + pick only EEG channels + format as Epoch objects """
     raw = get_raw_data(subject, runs)
@@ -58,6 +38,25 @@ def get_formatted_data(subject, bandpass, runs):
     X = epochs.copy().get_data(copy=False)
     y = epochs.events[:, -1] - 2
     return X, y
+
+
+def get_data(n_subjects=109, bandpass=True, reststate=False, formatter=get_formatted_data):
+    """ Set n_subjects to a small number for testing, 109 for full dataset """
+    if reststate:
+        runs = [1]
+    else:
+        runs = physionet_runs
+    Xs = []
+    ys = []
+    for subject in range(1, n_subjects+1):
+        X, y = formatter(subject, bandpass, runs)
+        Xs.extend(X)
+        ys.extend(y)
+    homogenous_ixs = [i for i in range(len(Xs)) if Xs[i].shape==(64, 161)]
+    Xs_homogenous = [Xs[i] for i in homogenous_ixs]
+    ys_homogenous = [ys[i] for i in homogenous_ixs]
+    print(f"\n #### Got data: {len(Xs_homogenous)} of {len(Xs)} EEG recordings ####\n")
+    return np.array(Xs_homogenous, dtype=np.float64), np.array(ys_homogenous)
 
 
 def get_raw_data(subject, runs):

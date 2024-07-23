@@ -285,14 +285,13 @@ if __name__ == "__main__":
         channel_X_test = X_test[:, sorted_channels[:20], :]
         channel_X_test_cov = get_covariances(channel_X_test)
 
-        1 / 0
         # Get a meta-clf score
         y_pred = []
         choices = []
         for ix, row in enumerate(X_test):
             channel_cov_matrix = channel_X_test_cov[ix]
             cov_matrix = Xcov[ix]
-            choice = OLD_get_best_classifier(row, cov_matrix, router)
+            choice = get_best_classifier(row, cov_matrix, router)
             choices.append(choice)
             out = predict_with_router(row, cov_matrix, channel_cov_matrix, router)
             y_pred.append(out)

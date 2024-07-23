@@ -1,0 +1,172 @@
+NOTES ON OCULAR ARTIFACT / FEATURE EXPERIMENTS
+
+*  current state: 64.19%
+
+*  adding more hjorth parameters for C4 and Fz: reduces score to 63.22%
+
+*  the most important feature according to xgboost feature importance
+   is the 22nd, i.e. the avg log power of one of the channels.
+
+   Now let's do PCA, ICA, ED and give log avg power of these.
+
+   with PCA added: 63.82%
+   with ICA as well: 64.19%
+   with ED as well: 63.02%  <-- curieux?
+   with PCA + ED (not ICA): 62.62%
+
+   Ok, we keep the PCA and ICA features. Next what?
+
+
+*   The feature that really helped the performance of the LDA was:DWT-BP.
+    Why was this feature so good?
+
+    - it computes the band power on the C3 channel
+    --> this suggests that C3 is very important. Perhaps I should compute
+        a few more features related to C3 (C3 is like "odds" perhaps)
+    - they use C3 because it's over the part of the cortext (LHS) that controls
+      right hand movement. Cz is good for feet, and C4 for left hand. Let's do
+      all these and see.
+
+
+        Starting point: 62.83%
+        Adding DWT power of C4 and Cz made no difference.
+
+
+==========================================================
+
+
+This was all prompted by this paper:
+https://www.scirp.org/journal/paperinformation?paperid=77330
+
+
+    LDA + 12 feats + avg power feats: 57.65% (this is SotA for LDA)
+    LGBM+ 12 feats + avg power feats: 61.40%
+    --> may as well stick to LGBM as I add new features
+
+
+===========================================================
+
+What about the idea of using the other classifier outputs as probabilities
+for this classifier? Stick to LDA. But give it probability from FgMDM etc.
+Sort of like ensemble, but smarter. Let's try this because so far ensembling
+is the only thing that has actually worked.
+
+    LGBM with:
+        - 12 feats
+        - avg power feats
+        - model preds from 5 top models
+    score: 62.03%
+    Details:
+        Mean Meta-clf score: 0.620335429769392
+        Mean Laplacian + FgMDM (n=24) model score: 0.6371069182389937
+        Mean 24-channel FgMDM score: 0.6377358490566039
+        Mean FgMDM score: 0.619916142557652
+        Mean PCL score: 0.628930817610063
+        Mean CL score: 0.6174004192872118
+
+    I know LGBM can be a bit hard to tune / likes to overfit, so I tried
+    XGBClassifier too (no great hopes there), but it does seem odd that
+    we could get less good performance than one of the literal features.
+    Perhaps it's the train/test thing...
+
+    XGB with:
+        - 12 feats
+        - avg power feats
+        - model preds from 5 top models
+    score:
+    Details:
+
+    LDA with:
+        - 12 feats
+        - avg power feats
+        - model preds from 5 top models
+    score: 61.97%
+    Details:
+        Mean Meta-clf score: 0.619706498951782
+        Mean Laplacian + FgMDM (n=24) model score: 0.6371069182389937
+        Mean 24-channel FgMDM score: 0.6377358490566039
+        Mean FgMDM score: 0.619916142557652
+        Mean PCL score: 0.6264150943396227
+        Mean CL score: 0.6174004192872118
+
+    Logistic Regression with:
+        - 12 feats
+        - avg power feats
+        - model preds from 5 top models
+        - scaled with StandardScaler
+    score: 61.8%
+    Details:
+        Mean Meta-clf score: 0.6186582809224319
+        Mean Laplacian + FgMDM (n=24) model score: 0.6371069182389937
+        Mean 24-channel FgMDM score: 0.6377358490566039
+        Mean FgMDM score: 0.619916142557652
+        Mean PCL score: 0.6255765199161425
+        Mean CL score: 0.6174004192872118
+
+
+===========================================================
+
+
+    #LaplacianCFELDA: 62.01%
+    #LaplacianCSPLDA: 62.39%
+    #LaplacianCFELGB: 61.03% <-- LDA is good.
+
+    """
+    It's not really surprising that LaplacianCFELDA doesn't work
+    because the feats are on the channels. But with Laplacian i've
+    changed the basis --> so this doesn't really make sense anymore.
+    Perhaps what I need to do is:
+        - find the laplacian components most correlated to C3/C4/Fpz etc
+        - find the feats in the eigen-space
+    """
+
+    sf = 160  # Sampling frequency
+    #features = extract_features(X, sf)
+    #print("Extracted features shape:", features.shape)
+
+    #LDA with eyes removed + feats : 56.39% --> it's the feats that help
+    #this is probably bc they already removed this from the ds
+    #Vanilla LDA + feats           : 56.50%
+    #Vanilla LDA + avg_power_matrix: 48.85% <VERY INTERESTING!>
+    #XGB + feats                   : 53.60%  <-- should be 60%+?
+    #XGB + avg_power_matrix        : 53.48%
+    #LGB + feats                   : 56.67%  <-- it's barely better than LDA
+    #LGB + avg_power_matrix        : 48.85%  <-- more along what i expected
+    #no we try removing features
+    #LGB + feats, no dwt_plv_val   : 55.77%
+    #LGB + band power + dwt bandpow: 55.68%
+    #LGB + band power              : 48.68%  <-- DWT-BP is key feature,
+    #                                            7% improvement from this.
+    # --> this suggests keeping LGB, adding 10 new good feats.
+    #LGB + 12 feats                : 56.31%  <-- Nope, ok too bad.
+    #We can just remember that these feats do help LDA a lot.
+    #The shame is that the main good idea from this paper is removing the
+    #ocular artifacts, and that doesn't seem to actually work.
+    #Laplcian + feats + LDA        : 52.22%
+
+
+
+    """
+    score = results(clf, X - np.mean(X), y, cv)
+    print(score) #62.24%
+
+    score = results(clf, (X - np.mean(X))/np.std(X), y, cv)
+    print(score) #62.47% (OK whitening is a ~1SE improvement I think,
+    # better than 62.33% without whitening.
+    # --> this is a #TODO for later, un-important for current analysis,
+    #but should provide a small performance increase in meta_clf.py as it
+    # --> It did not! How odd.
+    """
+
+
+
+
+    """
+    # Assuming `eeg_data` is your (64, 161) EEG signal
+    # Bandpass filter the data
+    raw = mne.io.RawArray(eeg_data, mne.create_info(ch_names=64, sfreq=160, ch_types="eeg"))
+    raw.filter(1, 30, fir_design='firwin')
+
+    # Apply CAR filtering
+    eeg_data_filtered = raw.get_data() - np.mean(raw.get_data(), axis=0)
+    """

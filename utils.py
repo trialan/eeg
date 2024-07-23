@@ -4,6 +4,17 @@ import sklearn
 import pyriemann
 from sklearn.model_selection import ShuffleSplit, cross_val_score
 from scipy.stats import boxcox
+import pickle
+
+
+def read_pickle(path):
+    with open(path, 'rb') as file:
+        return pickle.load(file)
+
+
+def write_pickle(obj, path):
+    with open(path, 'wb') as file:
+        pickle.dump(obj, file)
 
 
 def set_seed(seed=42):

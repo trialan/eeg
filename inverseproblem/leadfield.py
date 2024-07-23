@@ -4,7 +4,7 @@ import pyvista as pv
 import mne
 from mayavi import mlab
 from scipy.spatial import Delaunay, ConvexHull
-from eeg.laplacian import plot_mesh, plot_basis_functions, create_triangular_dmesh
+from eeg.laplacian import plot_mesh, plot_basis_functions, create_triangular_dmesh, resample_electrode_positions
 from eeg import physionet_runs
 from eeg.data import get_raw_data
 import spharapy.trimesh as trimesh
@@ -175,6 +175,20 @@ def plot_bem_and_sources(subject, subjects_dir, src):
         mne.viz.plot_bem(subject=subject, subjects_dir=subjects_dir, src=src, orientation='coronal')
 
 
+def decimate_mesh(vertices, triangles, reduction_factor=0.5):
+    # Create a PyVista mesh
+    mesh = pv.PolyData(vertices, np.hstack([np.full((triangles.shape[0], 1), 3), triangles]).astype(int))
+
+    # Decimate the mesh using vtk's decimate method
+    decimated_mesh = mesh.decimate(target_reduction=reduction_factor)
+
+    # Extract the decimated vertices and triangles
+    decimated_vertices = decimated_mesh.points
+    decimated_triangles = decimated_mesh.faces.reshape(-1, 4)[:, 1:]
+
+    return decimated_vertices, decimated_triangles
+
+
 if __name__ == '__main__':
     #model, fwd = compute_forward_solution()
     #src=fwd['src']
@@ -191,9 +205,13 @@ if __name__ == '__main__':
     vertices_lh, triangles_lh = load_pial_surface(subject, subjects_dir, 'lh')
     vertices_rh, triangles_rh = load_pial_surface(subject, subjects_dir, 'rh')
     vertices, triangles = combine_hemisphere_surfaces(vertices_lh, triangles_lh, vertices_rh, triangles_rh)
-    mesh = create_triangular_dmesh(vertices)
-    plot_mesh(mesh)
-    plot_cortical_surface_and_sources(vertices, triangles, src)
+    
+    sphara_mesh = trimesh.TriMesh(triangles, vertices)
+    decimated_vert, decimated_tria = decimate_mesh(vertices, triangles, 0.95)
+    decimated_sphara_mesh = trimesh.TriMesh(decimated_tria, decimated_vert)
+    #plot_basis_functions(sphara_mesh)
+    plot_mesh(decimated_sphara_mesh)
+    #plot_cortical_surface_and_sources(vertices, triangles, src)
 
     #fwd_fixed = mne.convert_forward_solution(
          #       fwd, surf_ori=True, force_fixed=True, use_cps=True

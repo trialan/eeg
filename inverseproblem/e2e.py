@@ -10,6 +10,7 @@ from eeg import physionet_runs
 from eeg.data import get_raw_data, tmax, tmin, get_data
 from eeg.utils import results, get_cv, avg_power_matrix
 from eeg.inverseproblem.leadfield import compute_forward_solution
+from eeg.plot_reproduction import assemble_classifer_CSPLDA
 
 method = "eLORETA"
 snr = 3.0 #why??
@@ -65,21 +66,20 @@ def get_subject_J(subject):
     del raw
     return J, y
 
+"""
+LDA on J (oct6)              ~ 49%
+LDA on J (oct4)              ~ 49%
+LDA on X                     ~ 49%
+CSP+LDA (30 components) on X ~ 61.5%
+"""
+
 
 if __name__ == '__main__':
     _, fwd = compute_forward_solution()
     J, y = get_J_y()
 
-    lda = LinearDiscriminantAnalysis()
-    Jred = np.array([avg_power_matrix(m) for m in J])
     cv = get_cv()
-    J_score = results(lda, Jred, y, cv) #0.489727 (oct4), 
-    print(f"LDA on J with avg power time collapse: {J_score}")
-
-    X, y = get_data()
-    Xred = np.array([avg_power_matrix(m) for m in X])
-    lda = LinearDiscriminantAnalysis()
-    X_score = results(lda, Xred, y, cv) #0.488469
-    print(f"LDA on X with avg power time collapse: {X_score}")
-
+    clf = assemble_classifer_CSPLDA(30)
+    J_score = results(clf, J, y, cv) 
+    print(f"CSP+LDA on J: {J_score}")
 

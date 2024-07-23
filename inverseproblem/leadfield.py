@@ -163,9 +163,7 @@ def plot_cortical_surface_and_sources(vertices, triangles, src):
 
     for hemi in src:
         rr = hemi['rr'][hemi['inuse'].astype(bool)]
-        rr = normalize_vertices(rr)
         ax.scatter(rr[:, 0], rr[:, 1], rr[:, 2], s=30, c='b', alpha=0.7)
-        print(rr)
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
     ax.set_zlabel('Z')
@@ -193,7 +191,7 @@ def PVlot_cortical_surface_and_sources(vertices, triangles, src):
 
 
 def plot_bem_and_sources(subject, subjects_dir, src):
-        mne.viz.plot_bem(subject=subject, subjects_dir=subjects_dir, src=src, orientation='coronal')
+        mne.viz.plot_bem(subject=subject, subjects_dir=subjects_dir, src=src, orientation='free')
 
 
 def decimate_mesh(vertices, triangles, reduction_factor=0.5):
@@ -210,7 +208,7 @@ def decimate_mesh(vertices, triangles, reduction_factor=0.5):
     return decimated_vertices, decimated_triangles
 
 
-def plot_mesh_and_sources(mesh, src):
+def plot_mesh_and_sources(mesh, src_vertices):
     """ Expects a sphara TriMesh """
     vertices = np.array(mesh.vertlist)
     print("Plotted vertices: ", vertices.shape)
@@ -228,9 +226,7 @@ def plot_mesh_and_sources(mesh, src):
     ax.plot_trisurf(vertices[:, 0], vertices[:, 1], vertices[:, 2],
                     triangles=triangles, color='lightblue', edgecolor='black',
                     linewidth=0.5, shade=True, alpha=1)
-    # Get source locations
-    src_vertices = [s['rr'][s['vertno']] for s in src]
-    src_vertices = np.vstack(src_vertices)
+    # Plot source locations
     ax.scatter(src_vertices[:, 0], src_vertices[:, 1], src_vertices[:, 2], color='r')
     plt.show()
 
@@ -240,7 +236,6 @@ def read_xfm(xfm_path):
     matrix = []
     with open(xfm_path, 'r') as file:
         lines = file.readlines()
-        # Look for the lines containing the transformation matrix
         matrix_lines_started = False
         for line in lines:
             if line.strip().startswith('Linear_Transform'):
@@ -249,13 +244,12 @@ def read_xfm(xfm_path):
             if matrix_lines_started:
                 if line.strip() == '':
                     break
-                # Split line on spaces and semicolons, and filter out empty strings
                 values = [x for x in line.strip().replace(';', '').split() if x]
                 matrix.append([float(x) for x in values])
     if len(matrix) != 3:
         raise ValueError(f"Unexpected number of lines for transformation matrix: {len(matrix)}")
-    # Add the last row for homogeneous coordinates
     matrix.append([0, 0, 0, 1])
+    print("head - mri matrix: ", np.array(matrix))
     return np.array(matrix)
 
 
@@ -297,6 +291,7 @@ if __name__ == '__main__':
     #plot_vertices(source_vertices)
     #tri = reconstruct_curved_surface_and_delaunay(source_vertices)
 
+    # Testing
     data_path = mne.datasets.sample.data_path()
     subjects_dir = data_path / 'subjects'
     subject = 'sample'
@@ -305,17 +300,22 @@ if __name__ == '__main__':
     vertices_rh, triangles_rh = load_pial_surface(subject, subjects_dir, 'rh')
     vertices, triangles = combine_hemisphere_surfaces(vertices_lh, triangles_lh, vertices_rh, triangles_rh)
     
-    # Transform vertices to MRI coordinates using the correct transformation file
-    vertices_mri = transform_to_mri_coordinates(vertices, subject, subjects_dir) 
-    norm_vert = normalize_vertices(vertices_mri)
-    #sphara_mesh = trimesh.TriMesh(triangles, vertices_mri)
-    decimated_vert, decimated_tria = decimate_mesh(norm_vert, triangles, 0.95)
-    decimated_sphara_mesh = trimesh.TriMesh(decimated_tria, decimated_vert)
+    # Transform SOURCE vertices to MRI coordinates using the correct transformation file
+    src_vertices = [s['rr'][s['vertno']] for s in src]
+    src_vertices = np.vstack(src_vertices)
+    src_vertices_mri = transform_to_mri_coordinates(src_vertices, subject, subjects_dir) 
     
-    #plot_basis_functions(sphara_mesh)
+    # Reduce mesh resolution
+    decimated_vert, decimated_tria = decimate_mesh(normalize_vertices(vertices), triangles, 0.95)
+    decimated_sphara_mesh = trimesh.TriMesh(decimated_tria, decimated_vert)
+   
+    # Plot mesh and sources 
+    plot_mesh_and_sources(decimated_sphara_mesh, normalize_vertices(src_vertices_mri))
+    #plot_cortical_surface_and_sources(decimated_vert, decimated_tria, src)
+    
+
+    #plot_basis_functions(sp`hara_mesh)
     #plot_mesh(decimated_sphara_mesh)
-    #plot_mesh_and_sources(decimated_sphara_mesh, src)
-    plot_cortical_surface_and_sources(decimated_vert, decimated_tria, src)
 
     #fwd_fixed = mne.convert_forward_solution(
          #       fwd, surf_ori=True, force_fixed=True, use_cps=True

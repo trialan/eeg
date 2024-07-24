@@ -1,7 +1,7 @@
 import numpy as np
 
-from eeg.inverseproblem.spheres import generate_sphere_mesh
-from eeg.inverseproblem.electromag import (compute_vector_electric_field, Dipole,
+from eeg.inverseproblem.old.spheres import generate_sphere_mesh
+from eeg.inverseproblem.old.electromag import (compute_vector_electric_field, Dipole,
                                         convert_to_scalar_field)
 from eeg.inverseproblem.test_utils import (its_a_vector_field, its_a_scalar_field,
                                         we_have_field_at_all_points)

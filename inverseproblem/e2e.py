@@ -25,7 +25,7 @@ def get_J_y(n_subjects=109):
         y.extend(sub_y)
         J.extend(sub_J)
 
-    homogenous_ixs = [i for i in range(len(J)) if J[i].shape==(474, 161)]
+    homogenous_ixs = [i for i in range(len(J)) if True]#J[i].shape==(474, 161)]
     J_homogenous = [J[i] for i in homogenous_ixs]
     y_homogenous = [y[i] for i in homogenous_ixs]
     return np.array(J_homogenous), np.array(y_homogenous)
@@ -76,7 +76,7 @@ CSP+LDA (30 components) on X ~ 61.5%
 
 if __name__ == '__main__':
     _, fwd = compute_forward_solution()
-    J, y = get_J_y()
+    J, y = get_J_y(3)
 
     cv = get_cv()
     clf = assemble_classifer_CSPLDA(30)

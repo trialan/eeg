@@ -1,0 +1,15 @@
+
+
+To solve the inverse problem accurately I need:
+
+    1. an accurate forward model
+    2. an accurate inverse solver
+
+Based on my notes in solver_accuracy.txt as well as the mne tutorial
+source_localization_with_mne_dspm_sloreta_elorate.py I think the solvers
+part of this is reasonable. Probably should be better, but it seems OK.
+However I have lots of doubts regarding step 1.
+
+
+
+

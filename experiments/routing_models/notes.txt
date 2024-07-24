@@ -1,0 +1,94 @@
+
+At first I thought that this improved the accuracy past 66%, but
+actually this was only the case for a single fold. When you do
+5-fold CV as in the paper you get these results:
+
+When the router is trained on the val set:
+    X_train, X_val, y_train, y_val = train_test_split(X_train_full, y_train_full, test_size=0.25, random_state=42)
+
+    Mean Meta-clf score: 0.6159
+    Mean router score: 0.3606
+    Mean Laplacian + FgMDM (n=24) model score: 0.6230
+    Mean CSP+LDA model score: 0.6092
+    Mean PCA+CSP+LDA model score: 0.6140
+
+When the router is trained on the full train set (pretty sure we can do that):
+
+    Mean Meta-clf score: 0.6283
+    Mean router score: 0.3844
+    Mean Laplacian + FgMDM (n=24) model score: 0.6338 #seems a bit low?
+    Mean CSP+LDA model score: 0.6174
+    Mean PCA+CSP+LDA model score: 0.6235
+
+66% was achieved with this train-val-test split:
+
+    X_temp, X_test, y_temp, y_test = train_test_split(X, y,
+                                                      test_size=0.15,
+                                                      random_state=42)
+    X_train, X_val, y_train, y_val = train_test_split(X_temp, y_temp,
+                                                      test_size=0.1765,
+                                                      random_state=42)
+
+
+Mean Meta-clf score: 0.630188679245283
+Mean router score: 0.5301570680628271 (this is not great)
+Mean Laplacian + FgMDM (n=24) model score: 0.6337526205450734
+Mean 24-channel FgMDM score: 0.6377358490566039 (this is better than Xu et al by a tiny bit)
+
+
+Finally by using cutoffs of 95th percentile, and ensemble when not sure:
+
+Mean Meta-clf score: 0.6444444444444445 (this is 1.07% better than laplacian+FgMDM).
+Mean router score: 0.5301570680628271
+Mean Laplacian + FgMDM (n=24) model score: 0.6337526205450734
+Mean 24-channel FgMDM score: 0.6377358490566039
+
+Doing the same thing with thrown in FgMDM (only ensemble top 2 models when un-sure)
+    Mean Meta-clf score: 0.6486373165618449
+    Mean router score: 0.3660732984293193
+    Mean Laplacian + FgMDM (n=24) model score: 0.6371069182389937
+    Mean 24-channel FgMDM score: 0.6377358490566039
+    Mean FgMDM score: 0.619916142557652
+    using these cutoffs:
+    cutoff_EDF = 0.3350226332121478
+    cutoff_24C = 0.3346899916548326
+    cutoff_F = 0.3343728619094913
+
+And again doing the same thing with PCL and CL models thrown in too:
+    Mean Meta-clf score: 0.6486373165618449
+    Mean router score: 0.3120942408376964
+    Mean Laplacian + FgMDM (n=24) model score: 0.6371069182389937
+    Mean 24-channel FgMDM score: 0.6377358490566039
+    Mean FgMDM score: 0.619916142557652
+    Mean PCL score: 0.6316561844863731
+    Mean CL score: 0.6174004192872118
+    using these cutoffs:
+    cutoff_EDF = 0.2055192066980013
+    cutoff_24C = 0.2037104615796535
+    cutoff_F = 0.20484568672504827
+    cutoff_PCL = 0.20558124514075884
+    cutoff_CL = 0.2054181690938479
+
+    where I had SEs:
+    In [26]: np.std(meta_clf_scores) / np.sqrt(5)
+    Out[26]: 0.0048299994139485705
+
+    In [27]: np.std(edf_scores) / np.sqrt(5)
+    Out[27]: 0.0027237537557923204
+
+
+I thought whitening the data on PCL should help but instead i got
+
+    Mean Meta-clf score: 0.5811320754716982
+    Mean router score: 0.4712565445026177
+    Mean Laplacian + FgMDM (n=24) model score: 0.6371069182389937
+    Mean 24-channel FgMDM score: 0.6377358490566039
+    Mean FgMDM score: 0.619916142557652
+    Mean PCL score: 0.628930817610063
+    Mean CL score: 0.6174004192872118
+
+    How odd. perhaps cutoffs are all wrong with this new router?
+    it seems very accurate, should be better. Seems worth investigating
+    one day where i have no new ideas.
+
+

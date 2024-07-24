@@ -36,7 +36,6 @@ from eeg.plot_reproduction import (
     assemble_classifer_CSPLDA,
 )
 from eeg.experiments.channel_selection.channels import get_sorted_channels
-from eeg.experiments.routing_models.meta_clf import generate_datasets
 
 
 def assemble_classifier_FELDA(extractor=FeatureExtractor):

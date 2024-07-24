@@ -22,6 +22,7 @@ from sklearn.svm import SVC
 from sklearn.model_selection import cross_val_score
 from sklearn.preprocessing import StandardScaler
 
+
 def load_np_array_from_pkl(file_path):
     with open(file_path, 'rb') as file:
         np_array = pickle.load(file)
@@ -29,17 +30,27 @@ def load_np_array_from_pkl(file_path):
 
 
 if __name__ == '__main__':
-    _, y = get_data()
+    X, y = get_data()
     cv = get_cv()
 
-    S_raw = load_np_array_from_pkl('array_data.pkl')
+    S_raw_tilde = load_np_array_from_pkl('inverseproblem/array_data.pkl')
+
+    S_raw = []
+    for sr, xr in zip(S_raw_tilde, X):
+        U, S, VT = np.linalg.svd(xr, full_matrices=False)
+        Psi_xr = VT.T
+        K = 3
+        Psi_xr_reduced = Psi_xr[:, :K]
+        s = sr @ Psi_xr_reduced.T
+        S_raw.append(s)
+
     S = np.array([avg_power_matrix(m) for m in S_raw])
 
     scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
+    S_scaled = scaler.fit_transform(S)
 
     svm_clf = SVC(kernel='linear', C=1)
-    score = results(svm_clf, X_scaled, y, cv)
+    score = results(svm_clf, S_scaled, y, cv)
     print(score)
 
 
@@ -55,3 +66,5 @@ if __name__ == '__main__':
     FgMDM_score = results(FgMDM, Xcov, y, cv)
     print(FgMDM_score)
     """
+
+

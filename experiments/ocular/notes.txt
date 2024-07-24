@@ -1,5 +1,7 @@
 NOTES ON OCULAR ARTIFACT / FEATURE EXPERIMENTS
 
+
+
 *  current state: 64.19%
 
 *  adding more hjorth parameters for C4 and Fz: reduces score to 63.22%

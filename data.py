@@ -15,6 +15,7 @@ from eeg import physionet_runs
 
 tmin, tmax = 1.0, 2.0
 
+
 def get_formatted_data(subject, bandpass, runs):
     """ Band pass filter + pick only EEG channels + format as Epoch objects """
     raw = get_raw_data(subject, runs)

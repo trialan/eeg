@@ -1,0 +1,171 @@
+
+I want to be extra sure that the solver is correct, so I:
+
+    - generate synthetic J signal
+    - compute X using LF matrix
+    - invert the transformation with the solver
+    - compute RMSE
+
+
+    n_channels = 64  # Number of EEG channels
+    n_sources = 1422  # Number of sources in the brain model
+    n_times = 161    # Number of time points
+
+    sparsity_level = 0.1  # Proportion of non-zero entries
+    J = np.random.randn(n_sources, n_times)
+    mask = np.random.rand(n_sources, n_times) > sparsity_level
+    J[mask] = 0
+
+    X = A @ J
+
+    J_recovered = scalp_to_brain(X, A, solver=cp.MOSEK)
+
+    # Evaluate the accuracy
+    rmse = np.sqrt(mean_squared_error(J, J_recovered))
+    print(f'Root Mean Squared Error: {rmse}')
+
+    This gave results (varying lambda):
+
+    J.mean() = -0.000301
+    Lambda: 0  , RMSE: 0.3081599395396686 (convergence: optimal)
+    Lambda: 1e3, RMSE: 0.3232606073903181
+    Lambda: 1e4, RMSE: 0.3159693028854935
+    Lambda: 1e5, RMSE: 0.3159693028856301
+    Lambda: 1e6, RMSE: 0.3159693028856309
+    Lambda: 1e7, RMSE: 0.3159693028856309
+    Lambda: 1e9, RMSE: 0.3159693028856309 (convergence: optimal)
+
+
+Is the issue that the solver isn't converging?
+--> No, I added this:
+
+    result = prob.solve(solver=solver)
+    print(f'Problem status: {prob.status}')
+    if prob.status != cp.OPTIMAL:
+        print('Solver did not converge!')
+    S_opt = S.value
+    return S_opt
+
+And the status is optimal. But RMSE is still huge.
+
+It's important to be certain that I use a reasonable value for J. I chose
+to follow the lead of this mne tutorial:
+
+https://mne.tools/stable/auto_examples/simulation/source_simulator.html
+
+And set a single source to be active, with :
+
+
+source_time_series = np.sin(2.0 * np.pi * 18.0 * np.arange(161) * 1./160) * 10e-9
+
+I changed the frequency to 160Hz (in tutorial they have different value, but in physionet this is our frequency).
+
+Using this source (where I set a random row in J to be the source time
+series), I re-try different lambda values:
+
+    Lambda: 0, Root Mean Squared Error: 1.8654604374167556e-10,   optimal
+    Lambda: 1e2, Root Mean Squared Error: 1.9925228166208296e-10, optimal
+    Lambda: 500, Root Mean Squared Error: 2.010210952690834e-10,  optimal
+    Lambda: 750, Root Mean Squared Error: 1.9238527391226924e-10, optimal
+    Lambda: 1e3, Root Mean Squared Error: 1.0347288555934638e-15, optimal
+    Lambda: 1e5, Root Mean Squared Error: 1.8693139942877849e-10, optimal
+
+
+This is all very odd, so I choose to experiment with a different solver
+and investigate how good or bad that is. eLORETA seems like a more modern
+solver, and seems to be implemented in MNE. MNE is confusing af, but I can
+implement the paper with GPT.
+
+This is interesting:
+
+    J_loreta = eLORETA_solver(Y, A, 1e-2)
+    rmse = np.sqrt(mean_squared_error(J, J_loreta))
+
+    rmse = 1.7032133839201154e-10
+
+    J.mean() = -6.35898121835805e-28
+
+    J_loreta.mean() = 4.827044833935429e-27
+
+    Jl1l2.mean() = -7.807383713139513e-25
+
+--> this suggests that there isn't much bias in our estimate
+
+
+    In [20]: mean_absolute_error(J, J_loreta)
+    Out[20]: 2.242984759275418e-11
+
+    In [21]: mean_absolute_error(J, Jl1l2)
+    Out[21]: 2.2431553422940228e-11
+
+Ok because there are lots of negative values it's a bad idea to use MSE.
+
+    In [22]: np.mean(np.abs(J))
+    Out[22]: 4.4468379902957215e-12
+
+    In [23]: np.mean(np.abs(J_loreta))
+    Out[23]: 1.9493183095323978e-11
+
+    In [24]: np.mean(np.abs(Jl1l2))
+    Out[24]: 1.9495022233221305e-11
+
+--> let's re-run our experiments varying lambda but this time we look at the
+mean absolute error. (This is the L1-L2 solver).
+
+    Mean abs. value of J: 4.4468379902957215e-12
+    Problem status: optimal
+    Lambda: 1e-11, Mean Abs. Error: 1.2110912228608915e-11
+    Mean abs. val. J_recovered: 7.700712617782828e-12
+    Problem status: optimal
+    Lambda: 1000000000.0, Mean Abs. Error: 4.4468379902957215e-12
+    Mean abs. val. J_recovered: 2.2996090588024412e-32
+    Problem status: optimal
+    Lambda: 100000.0, Mean Abs. Error: 4.44683815123622e-12
+    Mean abs. val. J_recovered: 1.6147836207585852e-19
+    Problem status: optimal
+    Lambda: 1000.0, Mean Abs. Error: 8.521758281946231e-12
+    Mean abs. val. J_recovered: 4.074923441180746e-12
+
+Things make a good deal more sense here. But the MAE is still on the order
+of the mean average value of the source, this seems quite bad, but I can maybe
+see a case for it. Let's compare with eLORETA solver:
+
+    Mean abs. value of J: 4.4468379902957215e-12
+
+    Lambda: 1e-11, Mean Abs. Error: 1.5306609218068375e-11
+    Mean abs. val. J_recovered: 1.1089748439557269e-11
+
+    Lambda: 0.001, Mean Abs. Error: 1.530656540752413e-11
+    Mean abs. val. J_recovered: 1.1089702395749445e-11
+
+    Lambda: 0, Mean Abs. Error: 1.530660911702233e-11
+    Mean abs. val. J_recovered: 1.1089748333752133e-11
+
+    Lambda: 1e3, Mean Abs. Error: 1.4708101995732927e-11
+    Mean abs. val. J_recovered: 1.0456330098528576e-11
+
+    Lambda: 1e5, Mean Abs. Error: 1.2815715921587544e-11
+    Mean abs. val. J_recovered: 8.484942682470734e-12
+    (low bias, high variance)
+
+    Lambda: 1e6, Mean Abs. Error: 1.2279099074579971e-11
+    Mean abs. val. J_recovered: 7.92061353818022e-12
+
+    Lambda: 1e7, Mean Abs. Error: 8.380373217772418e-12
+    Mean abs. val. J_recovered: 3.9607034827838276e-12
+
+    Lambda: 5e7, Mean Abs. Error: 6.476391459861643e-12
+    Mean abs. val. J_recovered: 2.0404262748055095e-12
+    (best so far, not ideal though)
+
+    Lambda: 1e8, Mean Abs. Error: 5.298424631435319e-12
+    Mean abs. val. J_recovered: 8.558894910013213e-13
+
+    Lambda: 1e9, Mean Abs. Error: 4.649726080717545e-12
+    Mean abs. val. J_recovered: 2.0384196769697668e-13
+    (high bias, low variance)
+
+Ok, let's go through the mne tutorials on source estimation in detail.
+
+
+

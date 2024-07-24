@@ -54,7 +54,3 @@ As mentioned above, src carries the mapping from stc to the surface. The surface
 
 
 
-
-
-
-

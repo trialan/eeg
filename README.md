@@ -17,12 +17,13 @@ Notice how in our plot, CSP + LDA is a curve, in their's it's a horizontal line,
 At the top of the repo, we keep the code for reproducing the plot from Xu et al. as well as code useful for all experiments. In `/inverseproblem`, we put our code related to solving the [EEG inverse problem](https://www.fieldtriptoolbox.org/workshop/baci2017/inverseproblem/), this is our current angle for improving on Xu et al.'s results, and is currently under development. In `/experiments` we keep all our experiments, in particular that is where we have `routing_models/meta_clf.py`, our current best performing classifier.
 
 
-### Pretty pictures
+### Inverse and forward problem
 
-The interesting sources of EEG signal are located primarily on the cortical surface (below are triangulated cortical surfaces from the MNE sample dataset).
+The interesting sources of EEG signal are located primarily on the cortical surface, we have plotted the triangulated pial surface from the MNE sample dataset (left). We then turn the mesh into a SpharaPy mesh so we can more easily work with it. We plot the dipole sources when making a bem model using the MNE package with 'oct4' spacing on our SpharaPy mesh (right). The spacing parameter determines how sparcely and in what geometrical patter dipoles are placed on the surface, taking a fraction of the vertices of the original mesh (right).
 <p align="center">
   <img src="https://github.com/user-attachments/assets/82d2e22e-f72d-4daa-bc3e-8ef14992988a" width="45%" height="300px">
-  <img src="https://github.com/user-attachments/assets/ea104ba3-943c-473c-920d-ad4ae1b98dad" width="45%" height="300px">
+  <img src="https://github.com/user-attachments/assets/47c81e34-d60c-4017-8d17-a297d9231f5c" width="45%" height="300px">![sourcesonmesh](https://github.com/user-attachments/assets/47c81e34-d60c-4017-8d17-a297d9231f5c)
+
 </p>
 
 

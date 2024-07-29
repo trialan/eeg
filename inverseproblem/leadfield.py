@@ -3,14 +3,15 @@ import numpy as np
 import pyvista as pv
 import mne
 from scipy.spatial import Delaunay, ConvexHull
-from eeg.laplacian import plot_mesh, plot_basis_functions, create_triangular_dmesh, resample_electrode_positions
-from eeg import physionet_runs
-from eeg.data import get_raw_data
+from laplacian import plot_mesh, plot_basis_functions, create_triangular_dmesh, resample_electrode_positions
+from data import get_raw_data
 import spharapy.trimesh as trimesh
 from scipy.interpolate import Rbf, griddata
+from scipy import linalg
 from mpl_toolkits.mplot3d import Axes3D
 import nibabel as nib
 from mne.transforms import apply_trans
+physionet_runs = [6,10,14]
 
 def compute_lead_field_matrix():
     fwd = compute_forward_solution()
@@ -40,16 +41,16 @@ def compute_forward_solution():
                                  add_dist=False,
                                  subjects_dir=subjects_dir)
 
-    trans = 'fsaverage'  # ?
+    fiducials_trans= "phys.fif"
     fwd = mne.make_forward_solution(raw.info,
-                                    trans=trans,
+                                    trans=fiducials_trans,
                                     src=src,
                                     bem=bem,
                                     meg=False,
                                     eeg=True,
                                     mindist=5.0,
                                     n_jobs=1)
-
+    
     print("\n#### Forward Solution Computed ####\n")
     return fwd
 
@@ -73,11 +74,12 @@ def generate_and_convert_bem_surfaces(subject, subjects_dir):
     return sphara_meshes    
 
 
-def plot_vertices(vertices):
+def plot_vertices(vertices1, vertices2):
     fig = plt.figure()
     fig.subplots_adjust(left=0.02, right=0.98, top=0.98, bottom=0.02)
     ax = fig.add_subplot(projection='3d')
-    ax.scatter(vertices[:, 0], vertices[:, 1], vertices[:, 2], color='r')
+    ax.scatter(vertices2[:, 0], vertices2[:, 1], vertices2[:, 2], color='red')
+    ax.scatter(vertices1[:, 0], vertices1[:, 1], vertices1[:, 2], color='black')
     ax.set_xlabel('x')
     ax.set_ylabel('y')
     ax.set_zlabel('z')
@@ -178,7 +180,7 @@ def plot_cortical_surface_and_sources(vertices, triangles, src):
     plt.show()
 
 
-def PVlot_cortical_surface_and_sources(vertices, triangles, src):
+def plot_cortical_surface_and_sources_via_PyVista(vertices, triangles, src):
     # Create PyVista mesh for plotting
     mesh = pv.PolyData(vertices, np.hstack([np.full((triangles.shape[0], 1), 3), triangles]).astype(int))
     
@@ -198,7 +200,7 @@ def PVlot_cortical_surface_and_sources(vertices, triangles, src):
 
 
 def plot_bem_and_sources(subject, subjects_dir, src):
-        mne.viz.plot_bem(subject=subject, subjects_dir=subjects_dir, src=src, orientation='free')
+        mne.viz.plot_bem(subject=subject, subjects_dir=subjects_dir, src=src, orientation='coronal')
 
 
 def decimate_mesh(vertices, triangles, reduction_factor=0.5):
@@ -232,11 +234,11 @@ def plot_mesh_and_sources(mesh, src_vertices):
     ax.set_aspect('auto')
     ax.plot_trisurf(vertices[:, 0], vertices[:, 1], vertices[:, 2],
                     triangles=triangles, color='lightblue', edgecolor='black',
-                    linewidth=0.5, shade=True, alpha=1)
+                    linewidth=0.5, shade=True, alpha=0.5)
     # Plot source locations
     ax.scatter(src_vertices[:, 0], src_vertices[:, 1], src_vertices[:, 2], color='r')
+    print("Source vertices shape: ", src_vertices.shape)
     plt.show()
-
 
 
 def read_xfm(xfm_path):
@@ -260,13 +262,13 @@ def read_xfm(xfm_path):
     return np.array(matrix)
 
 
-def transform_to_mri_coordinates(vertices, subject, subjects_dir):
+def transform_to_mri_coordinates(vertices, subject, subjects_dir, trans):
     # Load the transformation matrix from the .xfm file
-    xfm_path = f'{subjects_dir}/{subject}/mri/transforms/talairach.xfm'
-    xfm_matrix = read_xfm(xfm_path)
+    #xfm_path = f'{subjects_dir}/{subject}/mri/transforms/talairach.xfm'
+    #xfm_matrix = read_xfm(xfm_path)
 
     # Apply the transformation matrix
-    vertices_mri = apply_trans(xfm_matrix, vertices)
+    vertices_mri = apply_trans(trans, vertices)
     return vertices_mri
 
 def normalize_vertices(vertices):
@@ -289,43 +291,50 @@ def normalize_vertices(vertices):
     return normalized_vertices
 
 
-if __name__ == '__main__':
-    #model, fwd = compute_forward_solution()
-    #src=fwd['src']
-    #subjects_dir = mne.datasets.sample.data_path() / 'subjects'
-    #sphara_meshes = generate_and_convert_bem_surfaces('sample', subjects_dir)
-    #source_vertices = return_source_locations(fwd)
-    #plot_vertices(source_vertices)
-    #tri = reconstruct_curved_surface_and_delaunay(source_vertices)
-
-    # Testing
+if __name__ == '__main__': 
+    ###Testing and Plotting###
+    
+    # Get pial surface
     data_path = mne.datasets.sample.data_path()
     subjects_dir = data_path / 'subjects'
     subject = 'sample'
-    src = setup_subject_source_space(subject, subjects_dir, spacing='oct6')
     vertices_lh, triangles_lh = load_pial_surface(subject, subjects_dir, 'lh')
     vertices_rh, triangles_rh = load_pial_surface(subject, subjects_dir, 'rh')
     vertices, triangles = combine_hemisphere_surfaces(vertices_lh, triangles_lh, vertices_rh, triangles_rh)
     
-    # Transform SOURCE vertices to MRI coordinates using the correct transformation file
+    # Get electrode positions
+    raw = get_raw_data(1, physionet_runs)
+    
+    # Get source vertices from setup source space (as in compute_forward_solution())
+    src = mne.setup_source_space(subject, spacing='oct4', surface='pial', subjects_dir=subjects_dir, add_dist=False)
     src_vertices = [s['rr'][s['vertno']] for s in src]
     src_vertices = np.vstack(src_vertices)
-    src_vertices_mri = transform_to_mri_coordinates(src_vertices, subject, subjects_dir) 
     
-    # Reduce mesh resolution
-    decimated_vert, decimated_tria = decimate_mesh(normalize_vertices(vertices), triangles, 0.95)
+    # Get fiducials from head to mri coord transform and plot electrodes, pial surface, and sources
+    fiducials_trans= "phys.fif"
+    fig = mne.viz.plot_alignment(raw.info, trans = fiducials_trans, subject = subject, subjects_dir=subjects_dir, surfaces="pial", src=src, show_axes=True, coord_frame = 'mri', dig=True, eeg=True)
+
+    ## Plotting sources on SpharaPy mesh ##
+
+    # Transform pial surface vertices to head coordinates using the correct transformation file (without fiducials because no electrodes considered here!)
+    mri_to_head_trans = mne.transforms.Transform("mri", "head")
+    vertices_head = apply_trans(mri_to_head_trans, vertices)
+    
+    # Reduce mesh resolution and create SpharaPy mesh
+    decimated_vert, decimated_tria = decimate_mesh(normalize_vertices(vertices_head), triangles, 0.95)
     decimated_sphara_mesh = trimesh.TriMesh(decimated_tria, decimated_vert)
-   
-    # Plot mesh and sources 
-    plot_mesh_and_sources(decimated_sphara_mesh, normalize_vertices(src_vertices_mri))
-    #plot_cortical_surface_and_sources(decimated_vert, decimated_tria, src)
     
+    # Plot SpharaPy mesh and source space
+    plot_mesh_and_sources(decimated_sphara_mesh, normalize_vertices(src_vertices))
+    
+    
+    ### Leadfield matrix computation ###
+    #leadfield = compute_lead_field_matrix_()
+    #print("SHAPE:",leadfield.shape)
+   
 
     #plot_basis_functions(sp`hara_mesh)
     #plot_mesh(decimated_sphara_mesh)
-
-    leadfield = compute_lead_field_matrix_()
-    print("SHAPE:",leadfield.shape)
     #subjects_dir = mne.datasets.sample.data_path() / 'subjects'
     #for i,sphara_mesh in enumerate(sphara_meshes):
     #    print(f"\n#### SpharaPy Mesh {i+1} ####")

@@ -8,6 +8,8 @@ from scipy.ndimage import gaussian_filter
 from nilearn.image import clean_img
 from tqdm import tqdm
 
+import multiprocessing as mp
+
 
 """
 This fMRI data is:
@@ -30,20 +32,24 @@ Question:
 
 root_dir = "/Users/thomasrialan/Documents/code/DS116/"
 slice_order = np.loadtxt(root_dir + "ds116_metadata/supplementary/slice_order.txt")
-fmri_tr = 2.0 #The repetition time, TR is standard naming
+fmri_tr = 2.0  # The repetition time, TR is standard naming
 
 
-def write_data_to_disk(output_dir='processed_data', batch_size=5):
+def write_data_to_disk(output_dir="processed_data", batch_size=5):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    X_filename = os.path.join(output_dir, 'X_data.npy')
-    Y_filename = os.path.join(output_dir, 'Y_data.npy')
+    X_filename = os.path.join(output_dir, "X_data.npy")
+    Y_filename = os.path.join(output_dir, "Y_data.npy")
 
     total_samples, X_shape, Y_shape = get_total_samples_and_shape()
 
-    X_memmap = np.memmap(X_filename, dtype='float32', mode='w+', shape=(total_samples, *X_shape))
-    Y_memmap = np.memmap(Y_filename, dtype='float32', mode='w+', shape=(total_samples, *Y_shape))
+    X_memmap = np.memmap(
+        X_filename, dtype="float32", mode="w+", shape=(total_samples, *X_shape)
+    )
+    Y_memmap = np.memmap(
+        Y_filename, dtype="float32", mode="w+", shape=(total_samples, *Y_shape)
+    )
 
     start_idx = 0
     while start_idx < total_samples:
@@ -74,17 +80,43 @@ def get_total_samples_and_shape():
     return total_samples, X_shape, Y_shape
 
 
-def get_data(start_idx, end_idx, batch_size=5):
+def process_batch(batch_paths):
+    X = []
+    Y = []
+    for eeg, bold, eventtimes in batch_paths:
+        x, y = load_run_data(eeg, bold, eventtimes)
+        X.extend(x)
+        Y.extend(y)
+    return X, Y
+
+
+def get_data(start_idx, end_idx, batch_size=5, num_processes=None):
     bold_paths, eeg_paths, event_time_paths = get_paths()[start_idx:end_idx]
-    for i in range(0, len(bold_paths), batch_size):
-        X = []
-        Y = []
-        batch_paths = zip(eeg_paths[i:i+batch_size], bold_paths[i:i+batch_size], event_time_paths[i:i+batch_size])
-        for eeg, bold, eventtimes in tqdm(batch_paths):
-            x, y = load_run_data(eeg, bold, eventtimes)
-            X.extend(x)
-            Y.extend(y)
-        yield np.array(X), np.array(Y)
+
+    if num_processes is None:
+        num_processes = mp.cpu_count()
+
+    with mp.Pool(processes=num_processes) as pool:
+        for i in range(0, len(bold_paths), batch_size):
+            batch_paths = list(
+                zip(
+                    eeg_paths[i : i + batch_size],
+                    bold_paths[i : i + batch_size],
+                    event_time_paths[i : i + batch_size],
+                )
+            )
+
+            # Process batches in parallel
+            results = list(tqdm(pool.imap(process_batch, [batch_paths]), total=1))
+
+            # Combine results
+            X = []
+            Y = []
+            for batch_X, batch_Y in results:
+                X.extend(batch_X)
+                Y.extend(batch_Y)
+
+            yield np.array(X), np.array(Y)
 
 
 def get_paths():
@@ -95,13 +127,19 @@ def get_paths():
     subject_pattern = os.path.join(root_dir, "sub*")
 
     for subject_dir in glob.glob(subject_pattern):
-        bold_pattern = os.path.join(subject_dir, "BOLD", "task002_run*", "bold_mcf_brain.nii.gz")
+        bold_pattern = os.path.join(
+            subject_dir, "BOLD", "task002_run*", "bold_mcf_brain.nii.gz"
+        )
         bold_paths.extend(glob.glob(bold_pattern))
 
-        eeg_pattern = os.path.join(subject_dir, "EEG", "task002_run*", "EEG_rereferenced.mat")
+        eeg_pattern = os.path.join(
+            subject_dir, "EEG", "task002_run*", "EEG_rereferenced.mat"
+        )
         eeg_paths.extend(glob.glob(eeg_pattern))
 
-        event_pattern = os.path.join(subject_dir, "behav", "task002_run*", "behavdata.txt")
+        event_pattern = os.path.join(
+            subject_dir, "behav", "task002_run*", "behavdata.txt"
+        )
         event_time_paths.extend(glob.glob(event_pattern))
 
     assert len(bold_paths) == len(eeg_paths) == len(event_time_paths)
@@ -109,12 +147,12 @@ def get_paths():
 
 
 def load_run_data(eeg_path, bold_path, event_time_path):
-    #eeg_data = load_eeg_run_data(eeg_path)
+    # eeg_data = load_eeg_run_data(eeg_path)
     fmri_data = load_bold_run_data(bold_path)
     events = load_events(event_time_path)
-    #x_kHz, y_mcf_brain = pair_eeg_fmri(eeg_data, fmri_data, events)
+    # x_kHz, y_mcf_brain = pair_eeg_fmri(eeg_data, fmri_data, events)
     y_mcf_brain = pair_eeg_fmri(fmri_data, events)
-    #x = resample_eeg(x_kHz)
+    # x = resample_eeg(x_kHz)
     x = preprocess_fmri(y_mcf_brain, fmri_tr, slice_order)
     y = np.array([e.label for e in events])
     return x, y
@@ -154,23 +192,23 @@ class Event:
         self.label = label
 
 
-#def pair_eeg_fmri(eeg_data, fmri_data, events, tr=2, eeg_fs=1000):
+# def pair_eeg_fmri(eeg_data, fmri_data, events, tr=2, eeg_fs=1000):
 def pair_eeg_fmri(fmri_data, events, tr=2, eeg_fs=1000):
-    #n_channels, n_timepoints = eeg_data.shape
+    # n_channels, n_timepoints = eeg_data.shape
     n_volumes = fmri_data.shape[-1]
-    #print("EEG duration (seconds):", n_timepoints / eeg_fs)
+    # print("EEG duration (seconds):", n_timepoints / eeg_fs)
     print("fMRI duration (seconds):", n_volumes * tr)
 
     x_list = []
     y_list = []
 
     for event in events:
-        #event_eeg = get_event_eeg(eeg_data, event.time)
+        # event_eeg = get_event_eeg(eeg_data, event.time)
         event_fmri = get_event_fmri(fmri_data, event.time)
-        #x_list.append(event_eeg)
+        # x_list.append(event_eeg)
         y_list.append(event_fmri)
 
-    #return np.array(x_list), np.array(y_list)
+    # return np.array(x_list), np.array(y_list)
     return np.array(y_list)
 
 
@@ -207,7 +245,7 @@ def preprocess_fmri(fmri_data, tr, slice_order):
     fmri_data_smoothed = gaussian_filter(fmri_data_highpass, sigma=(1.5, 1.5, 1.5, 0))
     fmri_data_reshaped = np.transpose(fmri_data_smoothed, (1, 2, 3, 0))
     fmri_data_stc = slice_timing_correction(fmri_data_reshaped, slice_order, tr)
-    return np.transpose(fmri_data_stc, (3,0,1,2))
+    return np.transpose(fmri_data_stc, (3, 0, 1, 2))
 
 
 def slice_timing_correction(fmri_data, slice_order, tr):
@@ -240,19 +278,20 @@ def resample_eeg(eeg_data, original_freq=1000, target_freq=500):
     resampled_data = np.zeros((num_trials, num_channels, new_num_time_points))
     for trial in range(num_trials):
         for channel in range(num_channels):
-            resampled_data[trial, channel] = signal.resample(eeg_data[trial, channel], new_num_time_points)
+            resampled_data[trial, channel] = signal.resample(
+                eeg_data[trial, channel], new_num_time_points
+            )
     return resampled_data
 
 
 if __name__ == "__main__":
-    x,y = write_data_to_disk()
-    #x, y = collect_all_data()
-    1/0
+    x, y = write_data_to_disk()
+    # x, y = collect_all_data()
+    1 / 0
     from eeg.plot_reproduction import assemble_classifier_CSPLDA
     from eeg.utils import get_cv, results
+
     clf = assemble_classifier_CSPLDA(10)
     cv = get_cv()
     score = results(clf, x, y, cv)
     print(score)
-
-

@@ -2,6 +2,7 @@ export PYTHONPATH="/root"
 ssh-keygen -t rsa -b 4096 -C "thomasrialan@gmail.com"
 eval "$(ssh-agent -s)"
 ssh-add ~/.ssh/id_rsa
+ssh-keyscan github.com >> ~/.ssh/known_hosts
 git clone git@github.com:trialan/eeg.git
 apt install python3.12-venv
 python3 -m venv /root/eegenv

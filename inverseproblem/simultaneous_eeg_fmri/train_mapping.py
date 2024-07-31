@@ -27,9 +27,9 @@ def downsample_eeg(eeg_data, original_rate=500, target_rate=2.86):
     return eeg_data[:, :, ::downsample_factor]
 
 
-def train_epoch(dataloader, optimizer, criterion):
-    """Sort of bad practice to "assume" the models are in memory, even though
-    they certainly are, come back and fix this eventually"""
+def train_epoch(dataloader, optimizer, criterion, eeg_encoder, fmri_encoder, eeg_decoder, fmri_decoder,
+                eeg_to_fmri_decoder, fmri_to_eeg_decoder):
+    """ Sort of bad practice to have so many args. Fix later """
     eeg_encoder.train()
     fmri_encoder.train()
     eeg_decoder.train()
@@ -70,9 +70,8 @@ def train_epoch(dataloader, optimizer, criterion):
     return total_loss / len(dataloader)
 
 
-def validate(dataloader, criterion):
-    """Sort of bad practice to "assume" the models are in memory, even though
-    they certainly are, come back and fix this eventually"""
+def validate(dataloader, criterion, eeg_encoder, fmri_encoder, eeg_decoder, fmri_decoder,
+                eeg_to_fmri_decoder, fmri_to_eeg_decoder):
     eeg_encoder.eval()
     fmri_encoder.eval()
     eeg_decoder.eval()
@@ -110,7 +109,7 @@ def validate(dataloader, criterion):
 def create_dataloaders(
     X_eeg,
     X_fmri,
-    batch_size=96,
+    batch_size,
     train_size=0.7,
     val_size=0.15,
     test_size=0.15,
@@ -192,9 +191,13 @@ def objective(trial):
     patience_counter = 0
 
     for epoch in range(num_epochs):
-        train_loss = train_epoch(train_dataloader, optimizer, criterion)
-        val_loss = validate(val_dataloader, criterion)
+        train_loss = train_epoch(train_dataloader, optimizer, criterion, eeg_encoder,
+                            fmri_encoder, eeg_decoder, fmri_decoder,
+                            eeg_to_fmri_decoder, fmri_to_eeg_decoder)
 
+        val_loss = validate(val_dataloader, criterion, eeg_encoder,
+                            fmri_encoder, eeg_decoder, fmri_decoder,
+                            eeg_to_fmri_decoder, fmri_to_eeg_decoder)
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             patience_counter = 0

@@ -9,10 +9,12 @@ from sklearn.model_selection import train_test_split
 from eeg.utils import read_pickle
 from eeg.inverseproblem.simultaneous_eeg_fmri.eeg_data import get_eeg_data
 from eeg.inverseproblem.simultaneous_eeg_fmri.fmri_data import get_fmri_data
-from eeg.inverseproblem.simultaneous_eeg_fmri.cyclic_cnn import (EEGEncoder,
-                                                                 EEGDecoder,
-                                                                 fMRIEncoder,
-                                                                 fMRIDecoder)
+from eeg.inverseproblem.simultaneous_eeg_fmri.cyclic_cnn import (
+    EEGEncoder,
+    EEGDecoder,
+    fMRIEncoder,
+    fMRIDecoder,
+)
 
 
 root_dir = "/root/DS116/"
@@ -25,8 +27,8 @@ def downsample_eeg(eeg_data, original_rate=500, target_rate=2.86):
 
 
 def train_epoch(dataloader, optimizer, criterion):
-    """ Sort of bad practice to "assume" the models are in memory, even though
-        they certainly are, come back and fix this eventually """
+    """Sort of bad practice to "assume" the models are in memory, even though
+    they certainly are, come back and fix this eventually"""
     eeg_encoder.train()
     fmri_encoder.train()
     eeg_decoder.train()
@@ -68,8 +70,8 @@ def train_epoch(dataloader, optimizer, criterion):
 
 
 def validate(dataloader, criterion):
-    """ Sort of bad practice to "assume" the models are in memory, even though
-        they certainly are, come back and fix this eventually """
+    """Sort of bad practice to "assume" the models are in memory, even though
+    they certainly are, come back and fix this eventually"""
     eeg_encoder.eval()
     fmri_encoder.eval()
     eeg_decoder.eval()
@@ -104,6 +106,42 @@ def validate(dataloader, criterion):
     return total_loss / len(dataloader)
 
 
+def create_dataloaders(
+    X_eeg,
+    X_fmri,
+    batch_size=32,
+    train_size=0.7,
+    val_size=0.15,
+    test_size=0.15,
+    random_state=42,
+):
+    # First split: separate test set
+    X_eeg_trainval, X_eeg_test, X_fmri_trainval, X_fmri_test = train_test_split(
+        X_eeg, X_fmri, test_size=test_size, random_state=random_state
+    )
+
+    # Second split: separate train and validation sets
+    val_size_adjusted = val_size / (train_size + val_size)
+    X_eeg_train, X_eeg_val, X_fmri_train, X_fmri_val = train_test_split(
+        X_eeg_trainval,
+        X_fmri_trainval,
+        test_size=val_size_adjusted,
+        random_state=random_state,
+    )
+
+    # Create datasets
+    train_dataset = TensorDataset(X_eeg_train, X_fmri_train)
+    val_dataset = TensorDataset(X_eeg_val, X_fmri_val)
+    test_dataset = TensorDataset(X_eeg_test, X_fmri_test)
+
+    # Create dataloaders
+    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+    test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+
+    return train_dataloader, val_dataloader, test_dataloader
+
+
 if __name__ == "__main__":
     X_eeg, y_eeg = get_eeg_data(root_dir)
     # X_fmri, y_fmri = get_fmri_data()
@@ -119,13 +157,13 @@ if __name__ == "__main__":
     X_eeg = downsample_eeg(X_eeg)
     eeg_time_dim = X_eeg.shape[2]
 
-    X_eeg_train, X_eeg_val, X_fmri_train, X_fmri_val = train_test_split(X_eeg, X_fmri, test_size=0.2, random_state=42)
+    X_eeg_train, X_eeg_val, X_fmri_train, X_fmri_val = train_test_split(
+        X_eeg, X_fmri, test_size=0.2, random_state=42
+    )
 
     batch_size = 32
-    train_dataset = TensorDataset(X_eeg_train, X_fmri_train)
-    val_dataset = TensorDataset(X_eeg_val, X_fmri_val)
-    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+
+    train_dataloader, val_dataloader, test_dataloader = create_dataloaders(X_eeg, X_fmri)
 
     # Model Initialization
     eeg_encoder = EEGEncoder()
@@ -136,22 +174,23 @@ if __name__ == "__main__":
     fmri_to_eeg_decoder = nn.Sequential(
         nn.Flatten(),
         nn.Linear(32 * 32, 34 * eeg_time_dim),
-        nn.Unflatten(1, (34, eeg_time_dim))
+        nn.Unflatten(1, (34, eeg_time_dim)),
     )
 
     eeg_to_fmri_decoder = nn.Sequential(
-        nn.Flatten(),
-        nn.Linear(32 * 32, 64 * 64 * 32),
-        nn.Unflatten(1, (1, 64, 64, 32))
+        nn.Flatten(), nn.Linear(32 * 32, 64 * 64 * 32), nn.Unflatten(1, (1, 64, 64, 32))
     )
 
     # Loss and Optimizer
     criterion = nn.MSELoss()
     optimizer = optim.Adam(
-        list(eeg_encoder.parameters()) + list(fmri_encoder.parameters()) +
-        list(eeg_decoder.parameters()) + list(fmri_decoder.parameters()) +
-        list(eeg_to_fmri_decoder.parameters()) + list(fmri_to_eeg_decoder.parameters()), 
-        lr=0.001
+        list(eeg_encoder.parameters())
+        + list(fmri_encoder.parameters())
+        + list(eeg_decoder.parameters())
+        + list(fmri_decoder.parameters())
+        + list(eeg_to_fmri_decoder.parameters())
+        + list(fmri_to_eeg_decoder.parameters()),
+        lr=0.001,
     )
 
     num_epochs = 100
@@ -159,15 +198,18 @@ if __name__ == "__main__":
         train_loss = train_epoch(train_dataloader, optimizer, criterion)
         val_loss = validate(val_dataloader, criterion)
 
-        torch.save({
-            'eeg_encoder': eeg_encoder.state_dict(),
-            'fmri_encoder': fmri_encoder.state_dict(),
-            'eeg_decoder': eeg_decoder.state_dict(),
-            'fmri_decoder': fmri_decoder.state_dict(),
-            'eeg_to_fmri_decoder': eeg_to_fmri_decoder.state_dict(),
-            'fmri_to_eeg_decoder': fmri_to_eeg_decoder.state_dict(),
-        }, 'cyclic_cnn.pth')
+        torch.save(
+            {
+                "eeg_encoder": eeg_encoder.state_dict(),
+                "fmri_encoder": fmri_encoder.state_dict(),
+                "eeg_decoder": eeg_decoder.state_dict(),
+                "fmri_decoder": fmri_decoder.state_dict(),
+                "eeg_to_fmri_decoder": eeg_to_fmri_decoder.state_dict(),
+                "fmri_to_eeg_decoder": fmri_to_eeg_decoder.state_dict(),
+            },
+            "cyclic_cnn.pth",
+        )
 
-        print(f'Epoch {epoch + 1}/{num_epochs}, Train Loss: {train_loss}, Val Loss: {val_loss}')
-
-
+        print(
+            f"Epoch {epoch + 1}/{num_epochs}, Train Loss: {train_loss}, Val Loss: {val_loss}"
+        )

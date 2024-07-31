@@ -5,6 +5,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 from tqdm import tqdm
 from sklearn.model_selection import train_test_split
+import optuna
 
 from eeg.utils import read_pickle
 from eeg.inverseproblem.simultaneous_eeg_fmri.eeg_data import get_eeg_data
@@ -141,6 +142,79 @@ def create_dataloaders(
 
     return train_dataloader, val_dataloader, test_dataloader
 
+def objective(trial):
+    # Define hyperparameters to optimize
+    batch_size = trial.suggest_int('batch_size', 32, 256)
+    lr = trial.suggest_loguniform('lr', 1e-5, 1e-1)
+    weight_decay = trial.suggest_loguniform('weight_decay', 1e-10, 1e-3)
+    dropout_rate = trial.suggest_uniform('dropout_rate', 0.1, 0.5)
+
+    # Create dataloaders
+    train_dataloader, val_dataloader, test_dataloader = create_dataloaders(X_eeg, X_fmri, batch_size=batch_size)
+
+    # Model Initialization
+    eeg_encoder = EEGEncoder(dropout_rate=dropout_rate)
+    fmri_encoder = fMRIEncoder(dropout_rate=dropout_rate)
+    eeg_decoder = EEGDecoder(dropout_rate=dropout_rate)
+    fmri_decoder = fMRIDecoder(dropout_rate=dropout_rate)
+
+    fmri_to_eeg_decoder = nn.Sequential(
+        nn.Flatten(),
+        nn.Linear(32 * 32, 34 * eeg_time_dim),
+        nn.Dropout(dropout_rate),
+        nn.Unflatten(1, (34, eeg_time_dim)),
+    )
+
+    eeg_to_fmri_decoder = nn.Sequential(
+        nn.Flatten(), 
+        nn.Linear(32 * 32, 64 * 64 * 32), 
+        nn.Dropout(dropout_rate),
+        nn.Unflatten(1, (1, 64, 64, 32))
+    )
+
+    # Loss and Optimizer
+    criterion = nn.MSELoss()
+    optimizer = optim.Adam(
+        list(eeg_encoder.parameters())
+        + list(fmri_encoder.parameters())
+        + list(eeg_decoder.parameters())
+        + list(fmri_decoder.parameters())
+        + list(eeg_to_fmri_decoder.parameters())
+        + list(fmri_to_eeg_decoder.parameters()),
+        lr=lr,
+        weight_decay=weight_decay
+    )
+
+    # Training loop
+    num_epochs = 100  # Maximum number of epochs
+    best_val_loss = float('inf')
+    patience = 3
+    patience_counter = 0
+
+    for epoch in range(num_epochs):
+        train_loss = train_epoch(train_dataloader, optimizer, criterion)
+        val_loss = validate(val_dataloader, criterion)
+
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            patience_counter = 0
+        else:
+            patience_counter += 1
+
+        # Report intermediate objective value
+        trial.report(val_loss, epoch)
+
+        # Early stopping
+        if patience_counter >= patience:
+            print(f"Early stopping triggered at epoch {epoch + 1}")
+            break
+
+        # Handle pruning based on the intermediate value
+        if trial.should_prune():
+            raise optuna.TrialPruned()
+
+    return best_val_loss
+
 
 if __name__ == "__main__":
     X_eeg, y_eeg = get_eeg_data(root_dir)
@@ -157,57 +231,17 @@ if __name__ == "__main__":
     X_eeg = downsample_eeg(X_eeg)
     eeg_time_dim = X_eeg.shape[2]
 
-    X_eeg_train, X_eeg_val, X_fmri_train, X_fmri_val = train_test_split(
-        X_eeg, X_fmri, test_size=0.2, random_state=42
-    )
+    # Create an Optuna study object
+    study = optuna.create_study(direction='minimize')
+    study.optimize(objective, n_trials=300, timeout=3600*8)  # Run for 8 hours
 
-    train_dataloader, val_dataloader, test_dataloader = create_dataloaders(X_eeg, X_fmri)
+    print("Best trial:")
+    trial = study.best_trial
 
-    # Model Initialization
-    eeg_encoder = EEGEncoder()
-    fmri_encoder = fMRIEncoder()
-    eeg_decoder = EEGDecoder()
-    fmri_decoder = fMRIDecoder()
+    print("  Value: ", trial.value)
+    print("  Params: ")
+    for key, value in trial.params.items():
+        print("    {}: {}".format(key, value))
 
-    fmri_to_eeg_decoder = nn.Sequential(
-        nn.Flatten(),
-        nn.Linear(32 * 32, 34 * eeg_time_dim),
-        nn.Unflatten(1, (34, eeg_time_dim)),
-    )
-
-    eeg_to_fmri_decoder = nn.Sequential(
-        nn.Flatten(), nn.Linear(32 * 32, 64 * 64 * 32), nn.Unflatten(1, (1, 64, 64, 32))
-    )
-
-    # Loss and Optimizer
-    criterion = nn.MSELoss()
-    optimizer = optim.Adam(
-        list(eeg_encoder.parameters())
-        + list(fmri_encoder.parameters())
-        + list(eeg_decoder.parameters())
-        + list(fmri_decoder.parameters())
-        + list(eeg_to_fmri_decoder.parameters())
-        + list(fmri_to_eeg_decoder.parameters()),
-        lr=0.001 * 3,
-    )
-
-    num_epochs = 100
-    for epoch in range(num_epochs):
-        train_loss = train_epoch(train_dataloader, optimizer, criterion)
-        val_loss = validate(val_dataloader, criterion)
-
-        torch.save(
-            {
-                "eeg_encoder": eeg_encoder.state_dict(),
-                "fmri_encoder": fmri_encoder.state_dict(),
-                "eeg_decoder": eeg_decoder.state_dict(),
-                "fmri_decoder": fmri_decoder.state_dict(),
-                "eeg_to_fmri_decoder": eeg_to_fmri_decoder.state_dict(),
-                "fmri_to_eeg_decoder": fmri_to_eeg_decoder.state_dict(),
-            },
-            "cyclic_cnn.pth",
-        )
-
-        print(
-            f"Epoch {epoch + 1}/{num_epochs}, Train Loss: {train_loss}, Val Loss: {val_loss}"
-        )
+    # Save the best model
+    best_params = study.best_params

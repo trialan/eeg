@@ -60,6 +60,7 @@ class EEGDecoder(nn.Module):
     def forward(self, x):
         x = self.deconv1(x)
         x = self.deconv2(x)
+        x = x.squeeze(1).squeeze(2).permute(0,2,1)
         return x
 
 

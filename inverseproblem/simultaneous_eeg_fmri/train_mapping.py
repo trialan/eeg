@@ -80,8 +80,7 @@ if __name__ == "__main__":
         fmri_to_eeg_decoder.train()
 
         total_loss = 0
-        for batch_idx, (eeg_batch, fmri_batch) in enumerate(dataloader):
-            import pdb;pdb.set_trace() 
+        for batch_idx, (eeg_batch, fmri_batch) in tqdm(enumerate(dataloader)):
             # EEG to EEG
             eeg_encoded = eeg_encoder(eeg_batch)
             eeg_decoded = eeg_decoder(eeg_encoded)

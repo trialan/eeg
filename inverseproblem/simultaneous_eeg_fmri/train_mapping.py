@@ -109,7 +109,7 @@ def validate(dataloader, criterion):
 def create_dataloaders(
     X_eeg,
     X_fmri,
-    batch_size=32,
+    batch_size=96,
     train_size=0.7,
     val_size=0.15,
     test_size=0.15,
@@ -161,8 +161,6 @@ if __name__ == "__main__":
         X_eeg, X_fmri, test_size=0.2, random_state=42
     )
 
-    batch_size = 32
-
     train_dataloader, val_dataloader, test_dataloader = create_dataloaders(X_eeg, X_fmri)
 
     # Model Initialization
@@ -190,8 +188,7 @@ if __name__ == "__main__":
         + list(fmri_decoder.parameters())
         + list(eeg_to_fmri_decoder.parameters())
         + list(fmri_to_eeg_decoder.parameters()),
-        lr=0.001,
-        weight_decay=1e-5,
+        lr=0.001 * 3,
     )
 
     num_epochs = 100

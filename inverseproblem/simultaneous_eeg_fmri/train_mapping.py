@@ -109,7 +109,7 @@ def validate(dataloader, criterion):
 def create_dataloaders(
     X_eeg,
     X_fmri,
-    batch_size=64,
+    batch_size=96,
     train_size=0.7,
     val_size=0.15,
     test_size=0.15,

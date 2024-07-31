@@ -44,7 +44,7 @@ def write_data_to_disk(output_dir="processed_data", batch_size=5):
 
     N_files = len(get_paths()[0])
     total_samples = 125 * N_files
-    X_shape = (34, 1000)
+    X_shape = (64, 64, 32)
     Y_shape = (1,)
 
     X_memmap = np.memmap(
@@ -71,8 +71,10 @@ def write_data_to_disk(output_dir="processed_data", batch_size=5):
     return X_filename, Y_filename
 
 
-def get_data(start_idx, end_idx, batch_size=5):
+def get_data(start_idx=None, end_idx=None, batch_size=5):
     bold_paths, eeg_paths, event_time_paths = get_paths()
+    if (start_idx is not None) and (end_idx is not None):
+
     bold_paths = bold_paths[start_idx:end_idx]
     eeg_paths = eeg_paths[start_idx:end_idx]
     event_time_paths = event_time_paths[start_idx:end_idx]
@@ -220,6 +222,3 @@ def slice_timing_correction(fmri_data, slice_order, tr):
     return corrected_data
 
 
-
-if __name__ == "__main__":
-    x, y = write_data_to_disk()

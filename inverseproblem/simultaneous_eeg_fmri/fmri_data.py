@@ -10,14 +10,35 @@ from tqdm import tqdm
 
 from eeg.inverseproblem.simultaneous_eeg_fmri.data_utils import (get_paths,
                                                                  load_events)
-#root_dir = "/root/DS116/"
-root_dir = "/Users/thomasrialan/Documents/code/DS116/"
-slice_order = np.loadtxt(root_dir + "ds116_metadata/supplementary/slice_order.txt")
+
+"""
+This fMRI data is:
+    - motion corrected (source: "mcf" in file name)
+    - has brain artifacts removed (source: openfrmi comments section)
+    - spatially smoothed (we do this)
+    - high pass filtered (we do this)
+    - slice time corrected (we do this)
+
+
+Questions:
+    - Should I do some "unentangling" of the fMRI data due to mismatch
+      in timescales? (HRF is slow, EEG is fast, stimuli are every 2-3s)
+    - Should I use a canonical HRF instead of my peak-a-5.5s-and-nothing-else
+      model? Probably, just not sure how. Discuss with Nyx. Read the litt.
+
+
+Experiment notes:
+    CNN on non-resampled dataset: 80% (i.e. same as uniform 0 pred, 80% of labels are 0.)
+    CNN on resampled dataset    : 85% (i.e crushed it because here random is 50%)
+"""
+
+
 tr = 2.0  # The repetition time, TR is standard naming
 
 
-def get_data():
+def get_fmri_data(root_dir):
     bold_paths, _, event_paths = get_paths(root_dir)
+    slice_order = np.loadtxt(root_dir + "ds116_metadata/supplementary/slice_order.txt")
     Xs = []
     ys = []
     for bp, ep in tqdm(list(zip(bold_paths, event_paths))):

@@ -10,15 +10,37 @@ from eeg.inverseproblem.simultaneous_eeg_fmri.data_utils import (get_paths,
                                                                  load_events)
 
 
+"""
+The EEG data is:
+    - re-referenced (source: README)
+    - gradient artifacts removed (source: README)
+    - BCG effects removed (source: email to author in openfmri comments)
+
+Experiment notes:
+    On non-resampled dataset:
+
+    CSP+LDA (n=10) : 79% (i.e. random)
+    CSP+LDA (n=30) : 80% (i.e. random)
+    FgMDM          : 71% (i.e. ultra shit)
+
+    On resampled dataset:
+
+    CSP+LDA (n=10) : 57%
+    CSP+LDA (n=30) : 61%
+    FgMDM          : 78%
+
+    this makes sense, it's actually pretty easy to classify these
+    ERPs just looking at the Cz electrode visuall (c.f. Wikipedia
+    figure 2 on P300 page).
+"""
+
 SAMPLING_FREQ = 1000  # Hz
 TMIN = -0.2
 TMAX = 0.8
 
 
-def get_data():
-    _, eeg_paths, event_paths = get_paths(
-        root="/Users/thomasrialan/Documents/code/DS116"
-    )
+def get_eeg_data(root_dir):
+    _, eeg_paths, event_paths = get_paths(root_dir)
     Xs = []
     ys = []
     for eegp, eventp in list(zip(eeg_paths, event_paths)):
@@ -127,7 +149,7 @@ def balance_and_shuffle(X, y):
 
 
 if __name__ == "__main__":
-    x, y = get_data()
+    x, y = get_data("/Users/thomasrialan/Documents/code/DS116/")
 
     X_resampled, y_resampled = balance_and_shuffle(x, y)
 
@@ -138,42 +160,5 @@ if __name__ == "__main__":
     cv = get_cv()
     score = results(clf, X_resampled, y_resampled, cv)
     print(score)
-
-    """
-    import pyriemann
-
-    Xcov = pyriemann.estimation.Covariances("oas").fit_transform(X_resampled)
-    FgMDM = pyriemann.classification.FgMDM()
-    FgMDM_score = results(FgMDM, Xcov, y_resampled, cv)
-    print(FgMDM_score)
-    """
-
-
-    """ Experiment notes:
-
-        On non-resampled dataset:
-
-        CSP+LDA (n=10) : 79% (i.e. random)
-        CSP+LDA (n=30) : 80% (i.e. random)
-        FgMDM          : 71% (i.e. ultra shit)
-
-        On resampled dataset:
-
-        CSP+LDA (n=10) : 57%
-        CSP+LDA (n=30) : 61%
-        FgMDM          : 78%
-
-    --> this makes sense, it's actually pretty easy to classify these
-        ERPs just looking at the Cz electrode visuall (c.f. Wikipedia
-        figure 2 on P300 page).
-    """
-
-
-
-
-
-
-
-
 
 

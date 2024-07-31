@@ -74,10 +74,9 @@ def write_data_to_disk(output_dir="processed_data", batch_size=5):
 def get_data(start_idx=None, end_idx=None, batch_size=5):
     bold_paths, eeg_paths, event_time_paths = get_paths()
     if (start_idx is not None) and (end_idx is not None):
-
-    bold_paths = bold_paths[start_idx:end_idx]
-    eeg_paths = eeg_paths[start_idx:end_idx]
-    event_time_paths = event_time_paths[start_idx:end_idx]
+        bold_paths = bold_paths[start_idx:end_idx]
+        eeg_paths = eeg_paths[start_idx:end_idx]
+        event_time_paths = event_time_paths[start_idx:end_idx]
     for i in range(0, len(bold_paths), batch_size):
         X = []
         Y = []

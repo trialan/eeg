@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
+from tqdm import tqdm
 
 from eeg.utils import read_pickle
 from eeg.inverseproblem.simultaneous_eeg_fmri.eeg_data import get_eeg_data

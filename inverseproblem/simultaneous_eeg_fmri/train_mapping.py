@@ -23,8 +23,8 @@ if __name__ == "__main__":
     assert len(X_eeg) == len(X_fmri)
     assert np.array_equal(y_eeg, y_fmri)
 
-    eeg_data = torch.Tensor(X_eeg).unsqueeze(2).unsqueeze(3)
-    fmri_data = torch.Tensor(X_fmri)
+    eeg_data = torch.Tensor(X_eeg).unsqueeze(2)  # shape: (4875, 34, 1, 1001)
+    fmri_data = torch.Tensor(X_fmri)  # shape: (4875, 64, 64, 32)
     dataset = TensorDataset(eeg_data, fmri_data)
     dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
 
@@ -36,24 +36,14 @@ if __name__ == "__main__":
     for epoch in range(num_epochs):
         for batch_eeg, batch_fmri in dataloader:
             optimizer.zero_grad()
+            eeg_to_fmri, fmri_to_eeg, eeg_reconstructed, fmri_reconstructed = model(batch_eeg, batch_fmri)
 
-            eeg_to_fmri, fmri_to_eeg, eeg_reconstructed, fmri_reconstructed = model(
-                batch_eeg, batch_fmri
-            )
-
-            loss_eeg_to_fmri = mse_loss(
-                eeg_to_fmri, batch_fmri.view(batch_fmri.size(0), -1, 1)
-            )
+            loss_eeg_to_fmri = mse_loss(eeg_to_fmri, batch_fmri.unsqueeze(1))
             loss_fmri_to_eeg = mse_loss(fmri_to_eeg, batch_eeg)
             loss_eeg_cycle = mse_loss(eeg_reconstructed, batch_eeg)
-            loss_fmri_cycle = mse_loss(
-                fmri_reconstructed, batch_fmri.view(batch_fmri.size(0), -1, 1)
-            )
+            loss_fmri_cycle = mse_loss(fmri_reconstructed, batch_fmri.unsqueeze(1))
 
-            total_loss = (
-                loss_eeg_to_fmri + loss_fmri_to_eeg + loss_eeg_cycle + loss_fmri_cycle
-            )
-
+            total_loss = loss_eeg_to_fmri + loss_fmri_to_eeg + loss_eeg_cycle + loss_fmri_cycle
             total_loss.backward()
             optimizer.step()
 
@@ -63,7 +53,4 @@ if __name__ == "__main__":
             'optimizer_state_dict': optimizer.state_dict(),
             'loss': total_loss,
         }, 'cyclic_cnn_checkpoint.pth')
-
         print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {total_loss.item():.4f}")
-
-

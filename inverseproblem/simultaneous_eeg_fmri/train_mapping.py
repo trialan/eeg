@@ -94,7 +94,7 @@ if __name__ == "__main__":
 
             # EEG to fMRI
             eeg_to_fmri = eeg_to_fmri_decoder(eeg_encoded.view(eeg_encoded.size(0), -1))
-            loss_eeg_to_fmri = criterion(eeg_to_fmri, fmri_batch)
+            loss_eeg_to_fmri = criterion(eeg_to_fmri.squeeze(1), fmri_batch)
 
             # fMRI to EEG
             fmri_to_eeg = fmri_to_eeg_decoder(fmri_encoded.view(fmri_encoded.size(0), -1))

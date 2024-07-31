@@ -81,6 +81,7 @@ if __name__ == "__main__":
 
         total_loss = 0
         for batch_idx, (eeg_batch, fmri_batch) in enumerate(dataloader):
+            import pdb;pdb.set_trace() 
             # EEG to EEG
             eeg_encoded = eeg_encoder(eeg_batch)
             eeg_decoded = eeg_decoder(eeg_encoded)

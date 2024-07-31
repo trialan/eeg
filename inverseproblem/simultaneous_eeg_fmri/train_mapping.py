@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 
@@ -63,3 +64,5 @@ if __name__ == "__main__":
         }, 'cyclic_cnn_checkpoint.pth')
 
         print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {total_loss.item():.4f}")
+
+

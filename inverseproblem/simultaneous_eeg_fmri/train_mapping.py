@@ -27,8 +27,7 @@ def downsample_eeg(eeg_data, original_rate=500, target_rate=2.86):
     return eeg_data[:, :, ::downsample_factor]
 
 
-def train_epoch(dataloader, optimizer, criterion, eeg_encoder, fmri_encoder, eeg_decoder, fmri_decoder,
-                eeg_to_fmri_decoder, fmri_to_eeg_decoder):
+def train_epoch(dataloader, optimizer, criterion, eeg_encoder, fmri_encoder, eeg_decoder, fmri_decoder, eeg_to_fmri_decoder, fmri_to_eeg_decoder):
     """ Sort of bad practice to have so many args. Fix later """
     eeg_encoder.train()
     fmri_encoder.train()
@@ -141,11 +140,12 @@ def create_dataloaders(
 
     return train_dataloader, val_dataloader, test_dataloader
 
+
 def objective(trial):
     # Define hyperparameters to optimize
     batch_size = trial.suggest_int('batch_size', 32, 256)
-    lr = trial.suggest_loguniform('lr', 1e-5, 1e-1)
-    weight_decay = trial.suggest_loguniform('weight_decay', 1e-10, 1e-3)
+    lr = trial.suggest_float('lr', 1e-5, 1e-1)
+    weight_decay = trial.suggest_float('weight_decay', 1e-10, 1e-3)
     dropout_rate = trial.suggest_uniform('dropout_rate', 0.1, 0.5)
 
     # Create dataloaders
@@ -248,3 +248,5 @@ if __name__ == "__main__":
 
     # Save the best model
     best_params = study.best_params
+
+

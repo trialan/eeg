@@ -29,7 +29,7 @@ def assemble_classifer_PCACSPLDA(n_components):
     return clf
 
 
-def assemble_classifer_CSPLDA(n_components):
+def assemble_classifier_CSPLDA(n_components):
     lda = LinearDiscriminantAnalysis()
     csp = CSP(n_components=n_components, reg=None, log=True, norm_trace=False)
     clf = Pipeline([("CSP", csp), ("LDA", lda)])
@@ -78,7 +78,7 @@ if __name__ == '__main__':
     print("CSP+LDA")
     scores = []
     for n_components in tqdm(component_numbers):
-        clf = assemble_classifer_CSPLDA(n_components)
+        clf = assemble_classifier_CSPLDA(n_components)
         score = results(clf, X, y, cv)
         scores.append(score)
     plt.plot(component_numbers, scores, marker='o', linestyle='-', label='CSP+LDA')

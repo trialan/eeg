@@ -6,6 +6,9 @@ import numpy as np
 from tqdm import tqdm
 from sklearn.utils import resample
 
+from eeg.inverseproblem.simultaneous_eeg_fmri.data_utils import (get_paths,
+                                                                 load_events)
+
 
 SAMPLING_FREQ = 1000  # Hz
 TMIN = -0.2
@@ -27,30 +30,6 @@ def get_data():
     ys_homogenous = [ys[i] for i in homogenous_ixs]
     print(f"\n #### Got data: {len(Xs_homogenous)} of {len(Xs)} EEG recordings ####\n")
     return np.array(Xs_homogenous, dtype=np.float64), np.array(ys_homogenous)
-
-
-def get_paths(root):
-    def _get_paths(path_type, root):
-        assert path_type in ["BOLD", "EEG", "behav"]
-        paths = []
-        file_name = {
-            "BOLD": "bold_mcf_brain.nii.gz",
-            "EEG": "EEG_rereferenced.mat",
-            "behav": "behavdata.txt",
-        }[path_type]
-
-        subject_pattern = os.path.join(root, "sub*")
-
-        for subject_dir in glob.glob(subject_pattern):
-            pattern = os.path.join(subject_dir, path_type, "task002_run*", file_name)
-            paths.extend(glob.glob(pattern))
-
-        return np.array(paths)
-
-    bold_paths = _get_paths("BOLD", root)
-    eeg_paths = _get_paths("EEG", root)
-    event_paths = _get_paths("behav", root)
-    return bold_paths, eeg_paths, event_paths
 
 
 def get_formatted_data(eeg_file, event_file):
@@ -83,29 +62,6 @@ def get_formatted_data(eeg_file, event_file):
     y = epochs.events[:, -1]
 
     return X, y
-
-
-def load_events(file_path):
-    """load in mne Raw format: [time, 0., label]"""
-    event_data = []
-    with open(file_path, "r") as file:
-        next(file)
-        for line in file:
-            components = line.strip().split()
-            if len(components) == 4:
-                time = np.int64(float(components[0]) * 1000)  # time in seconds
-                event_type = np.int64(components[1])
-                event_data.append(np.array([time, event_type]))
-    event_data = np.array(event_data)
-    mne_fmt = np.concatenate(
-        (
-            event_data[:, :1],
-            np.int64(np.zeros((len(event_data), 1))),
-            event_data[:, 1:],
-        ),
-        axis=1,
-    )
-    return mne_fmt
 
 
 def create_mne_raw(eeg_data):
@@ -150,19 +106,22 @@ def balance_and_shuffle(X, y):
     X_minority = X[y == 1]
     y_minority = y[y == 1]
 
+    N = len(X_minority)
     # Upsample minority class
     X_minority_upsampled, y_minority_upsampled = resample(
-        X_minority, y_minority, replace=True, n_samples=len(X_majority), random_state=42
+        X_minority, y_minority, replace=False, n_samples=N, random_state=42
     )
 
     # Combine majority class with upsampled minority class
-    X_balanced = np.vstack((X_majority, X_minority_upsampled))
-    y_balanced = np.hstack((y_majority, y_minority_upsampled))
+    X_balanced = np.vstack((X_majority[:N], X_minority_upsampled))
+    y_balanced = np.hstack((y_majority[:N], y_minority_upsampled))
 
     # Shuffle the balanced dataset
     shuffle_indices = np.random.permutation(len(y_balanced))
     X_balanced_shuffled = X_balanced[shuffle_indices]
     y_balanced_shuffled = y_balanced[shuffle_indices]
+    print(X_balanced.shape)
+    print(y_balanced.shape)
 
     return X_balanced_shuffled, y_balanced_shuffled
 
@@ -180,12 +139,14 @@ if __name__ == "__main__":
     score = results(clf, X_resampled, y_resampled, cv)
     print(score)
 
+    """
     import pyriemann
 
     Xcov = pyriemann.estimation.Covariances("oas").fit_transform(X_resampled)
     FgMDM = pyriemann.classification.FgMDM()
     FgMDM_score = results(FgMDM, Xcov, y_resampled, cv)
     print(FgMDM_score)
+    """
 
 
     """ Experiment notes:

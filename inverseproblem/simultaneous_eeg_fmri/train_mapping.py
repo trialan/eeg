@@ -39,17 +39,16 @@ if __name__ == "__main__":
     fmri_encoder = fMRIEncoder()
     eeg_decoder = EEGDecoder()
     fmri_decoder = fMRIDecoder()
-    eeg_to_fmri_decoder = nn.Sequential(
-        nn.Linear(32 * 1001, 64 * 64 * 32),
-        nn.ReLU(),
-        nn.Unflatten(1, (1, 64, 64, 32))
-        )
     fmri_to_eeg_decoder = nn.Sequential(
             nn.Flatten(),
             nn.Linear(64 * 64 * 32, 34 * 1001),
             nn.Unflatten(1, (34, 1001))
         )
-
+    eeg_to_fmri_decoder = nn.Sequential(
+        nn.Linear(32 * 1001 * 1 * 34, 64 * 64 * 32),
+        nn.ReLU(),
+        nn.Unflatten(1, (1, 64, 64, 32))
+        )
 
     # Loss and Optimizer
     criterion = nn.MSELoss()

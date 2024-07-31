@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 
@@ -22,8 +23,8 @@ if __name__ == "__main__":
     assert len(X_eeg) == len(X_fmri)
     assert np.array_equal(y_eeg, y_fmri)
 
-    eeg_data = torch.Tensor(X_eeg)  # shape: (4875, 34, 1001)
-    fmri_data = torch.Tensor(X_fmri)  # shape: (4875, 64, 64, 32)
+    eeg_data = torch.Tensor(X_eeg).unsqueeze(2).unsqueeze(3)
+    fmri_data = torch.Tensor(X_fmri)
     dataset = TensorDataset(eeg_data, fmri_data)
     dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
 

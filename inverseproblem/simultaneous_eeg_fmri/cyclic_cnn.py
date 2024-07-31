@@ -32,7 +32,8 @@ class EEGEncoder(nn.Module):
         self.conv2 = Conv3DBlock(16, 32, kernel_size=3, stride=1, padding=1)
 
     def forward(self, x):
-        import pdb;pdb.set_trace() 
+        x = x.unsqueeze(1)
+        x = x.permute(0,1,4,2,3)
         x = self.conv1(x)
         x = self.conv2(x)
         return x

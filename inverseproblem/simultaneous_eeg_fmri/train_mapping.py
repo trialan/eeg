@@ -17,6 +17,11 @@ root_dir = "/root/DS116/"
 # root_dir = "/Users/thomasrialan/Documents/code/DS116/"
 
 
+def downsample_eeg(eeg_data, original_rate=500, target_rate=2.86):
+    downsample_factor = int(original_rate / target_rate)
+    return eeg_data[:, :, ::downsample_factor]
+
+
 if __name__ == "__main__":
     X_eeg, y_eeg = get_eeg_data(root_dir)
     # X_fmri, y_fmri = get_fmri_data()
@@ -29,6 +34,10 @@ if __name__ == "__main__":
     X_eeg = torch.tensor(X_eeg).float()
     X_fmri = torch.tensor(X_fmri).float()
 
+    X_eeg = downsample_eeg(X_eeg)
+    eeg_time_dim = X_eeg.shape[2]
+
+    import pdb;pdb.set_trace() 
     # DataLoader
     batch_size = 32
     dataset = TensorDataset(X_eeg, X_fmri)
@@ -45,7 +54,7 @@ if __name__ == "__main__":
             nn.Unflatten(1, (34, 1001))
         )
     eeg_to_fmri_decoder = nn.Sequential(
-        nn.Linear(32 * 1001 * 1 * 34, 64 * 64 * 32),
+        nn.Linear(32 * eeg_time_dim * 1 * 34, 64 * 64 * 32),
         nn.ReLU(),
         nn.Unflatten(1, (1, 64, 64, 32))
         )

@@ -30,7 +30,7 @@ Question:
 """
 
 
-root_dir = "/root/"
+root_dir = "/root/DS116/"
 slice_order = np.loadtxt(root_dir + "ds116_metadata/supplementary/slice_order.txt")
 fmri_tr = 2.0  # The repetition time, TR is standard naming
 
@@ -42,7 +42,10 @@ def write_data_to_disk(output_dir="processed_data", batch_size=5):
     X_filename = os.path.join(output_dir, "X_data.npy")
     Y_filename = os.path.join(output_dir, "Y_data.npy")
 
-    total_samples, X_shape, Y_shape = get_total_samples_and_shape()
+    N_files = len(get_paths()[0])
+    total_sanples = 125 * N_files
+    X_shape = (125 * N_files, 34, 1000)
+    Y_shape = (125 * N_files, 1)
 
     X_memmap = np.memmap(
         X_filename, dtype="float32", mode="w+", shape=(total_samples, *X_shape)
@@ -66,19 +69,6 @@ def write_data_to_disk(output_dir="processed_data", batch_size=5):
 
     print(f"Data written to {X_filename} and {Y_filename}")
     return X_filename, Y_filename
-
-
-def get_total_samples_and_shape():
-    total_samples = 0
-    X_shape = None
-    Y_shape = None
-    for batch_X, batch_Y in get_data(0, 5):  # Just get the first batch
-        total_samples += len(batch_X)
-        if X_shape is None:
-            X_shape = batch_X.shape[1:]
-            Y_shape = batch_Y.shape[1:] if len(batch_Y.shape) > 1 else (1,)
-    return total_samples, X_shape, Y_shape
-
 
 
 def get_data(start_idx, end_idx, batch_size=5):
@@ -117,6 +107,7 @@ def get_paths():
     bold_paths = _get_paths("BOLD", root="/root/DS116")
     eeg_paths = _get_paths("EEG", root="/root/DS116")
     event_paths = _get_paths("behav", root="/root/DS116")
+    assert len(event_paths) == len(eeg_paths) == len(bold_paths)
     return bold_paths, eeg_paths, event_paths
 
 
@@ -140,6 +131,7 @@ def load_bold_run_data(run_path):
 
 
 def load_events(file_path):
+    """ load in mne Raw format: [time, 0., label] """
     event_data = []
     with open(file_path, "r") as file:
         next(file)
@@ -148,14 +140,13 @@ def load_events(file_path):
             if len(components) == 4:
                 time = float(components[0])
                 event_type = int(components[1])
-                event_data.append(Event(time, event_type))
-    return np.array(event_data)
+                event_data.append(np.array([time, event_type]))
+    event_data = np.array(event_data)
+    mne_fmt = np.concatenate((event_data[:, :1],
+                              np.zeros((len(event_data),1)),
+                              event_data[:, 1:]), axis=1)
+    return mne_fmt
 
-
-class Event:
-    def __init__(self, time, label):
-        self.time = time
-        self.label = label
 
 
 # def pair_eeg_fmri(eeg_data, fmri_data, events, tr=2, eeg_fs=1000):

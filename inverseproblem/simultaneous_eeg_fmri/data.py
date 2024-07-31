@@ -119,7 +119,8 @@ def load_run_data(eeg_path, bold_path, event_time_path):
     y_mcf_brain = pair_eeg_fmri(fmri_data, events)
     # x = resample_eeg(x_kHz)
     x = preprocess_fmri(y_mcf_brain, fmri_tr, slice_order)
-    y = np.array([e.label for e in events])
+    y = np.array([e[2] for e in events])
+    assert set(y) == {1,0}
     return x, y
 
 

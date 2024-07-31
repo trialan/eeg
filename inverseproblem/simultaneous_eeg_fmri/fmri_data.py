@@ -20,7 +20,7 @@ def get_data():
     bold_paths, _, event_paths = get_paths(root_dir)
     Xs = []
     ys = []
-    for bp, ep in list(zip(bold_paths, event_paths)):
+    for bp, ep in tqdm(list(zip(bold_paths, event_paths))):
         x = load_bold_run_data(bp)
         events = load_events(ep)
         fmri, labels = get_run_data(x, events)

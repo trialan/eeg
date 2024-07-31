@@ -66,7 +66,7 @@ if __name__ == "__main__":
             # EEG to EEG
             eeg_encoded = eeg_encoder(eeg_batch.unsqueeze(1))
             eeg_decoded = eeg_decoder(eeg_encoded)
-            loss_eeg = criterion(eeg_decoded, eeg_batch.unsqueeze(1))
+            loss_eeg = criterion(eeg_decoded, eeg_batch)
 
             # fMRI to fMRI
             fmri_encoded = fmri_encoder(fmri_batch.unsqueeze(1))

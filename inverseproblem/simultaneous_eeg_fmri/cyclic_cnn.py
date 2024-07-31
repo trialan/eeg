@@ -19,7 +19,9 @@ class fMRIEncoder(nn.Module):
         super(fMRIEncoder, self).__init__()
         self.conv1 = Conv3DBlock(1, 16, kernel_size=(3,1,1), stride=1, padding=(1,0,0))
         self.conv2 = Conv3DBlock(16, 32, kernel_size=(3,1,1), stride=1, padding=(1,0,0))
+
     def forward(self, x):
+        x = x.unsqueeze(1)
         x = self.conv1(x)
         x = self.conv2(x)
         return x
@@ -30,9 +32,11 @@ class fMRIDecoder(nn.Module):
         super(fMRIDecoder, self).__init__()
         self.deconv1 = nn.ConvTranspose3d(32, 16, kernel_size=(3,1,1), stride=1, padding=(1,0,0))
         self.deconv2 = nn.ConvTranspose3d(16, 1, kernel_size=(3,1,1), stride=1, padding=(1,0,0))
+
     def forward(self, x):
         x = self.deconv1(x)
         x = self.deconv2(x)
+        x = x.squeeze(1)
         return x
 
 
@@ -43,6 +47,7 @@ class EEGEncoder(nn.Module):
         self.conv2 = Conv3DBlock(16, 32, kernel_size=3, stride=1, padding=1)
 
     def forward(self, x):
+        x = x.unsqueeze(1)
         x = x.unsqueeze(1)
         x = x.permute(0,1,4,2,3)
         x = self.conv1(x)

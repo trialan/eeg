@@ -39,8 +39,17 @@ if __name__ == "__main__":
     fmri_encoder = fMRIEncoder()
     eeg_decoder = EEGDecoder()
     fmri_decoder = fMRIDecoder()
-    eeg_to_fmri_decoder = fMRIDecoder()  # Decoder for mapping EEG to fMRI
-    fmri_to_eeg_decoder = EEGDecoder()  # Decoder for mapping fMRI to EEG
+    eeg_to_fmri_decoder = nn.Sequential(
+        nn.Linear(32 * 1001, 64 * 64 * 32),
+        nn.ReLU(),
+        nn.Unflatten(1, (1, 64, 64, 32))
+        )
+    fmri_to_eeg_decoder = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(64 * 64 * 32, 34 * 1001),
+            nn.Unflatten(1, (34, 1001))
+        )
+
 
     # Loss and Optimizer
     criterion = nn.MSELoss()
@@ -64,22 +73,22 @@ if __name__ == "__main__":
         total_loss = 0
         for batch_idx, (eeg_batch, fmri_batch) in enumerate(dataloader):
             # EEG to EEG
-            eeg_encoded = eeg_encoder(eeg_batch.unsqueeze(1))
+            eeg_encoded = eeg_encoder(eeg_batch)
             eeg_decoded = eeg_decoder(eeg_encoded)
             loss_eeg = criterion(eeg_decoded, eeg_batch)
 
             # fMRI to fMRI
-            fmri_encoded = fmri_encoder(fmri_batch.unsqueeze(1))
+            fmri_encoded = fmri_encoder(fmri_batch)
             fmri_decoded = fmri_decoder(fmri_encoded)
-            loss_fmri = criterion(fmri_decoded, fmri_batch.unsqueeze(1))
+            loss_fmri = criterion(fmri_decoded, fmri_batch)
 
             # EEG to fMRI
-            eeg_to_fmri = eeg_to_fmri_decoder(eeg_encoded)
-            loss_eeg_to_fmri = criterion(eeg_to_fmri, fmri_batch.unsqueeze(1))
+            eeg_to_fmri = eeg_to_fmri_decoder(eeg_encoded.view(eeg_encoded.size(0), -1))
+            loss_eeg_to_fmri = criterion(eeg_to_fmri, fmri_batch)
 
             # fMRI to EEG
-            fmri_to_eeg = fmri_to_eeg_decoder(fmri_encoded)
-            loss_fmri_to_eeg = criterion(fmri_to_eeg, eeg_batch.unsqueeze(1))
+            fmri_to_eeg = fmri_to_eeg_decoder(fmri_encoded.view(fmri_encoded.size(0), -1))
+            loss_fmri_to_eeg = criterion(fmri_to_eeg, eeg_batch)
 
             # Total loss
             loss = loss_eeg + loss_fmri + loss_eeg_to_fmri + loss_fmri_to_eeg

@@ -37,7 +37,6 @@ if __name__ == "__main__":
     X_eeg = downsample_eeg(X_eeg)
     eeg_time_dim = X_eeg.shape[2]
 
-    import pdb;pdb.set_trace() 
     # DataLoader
     batch_size = 32
     dataset = TensorDataset(X_eeg, X_fmri)
@@ -48,16 +47,18 @@ if __name__ == "__main__":
     fmri_encoder = fMRIEncoder()
     eeg_decoder = EEGDecoder()
     fmri_decoder = fMRIDecoder()
+
     fmri_to_eeg_decoder = nn.Sequential(
-            nn.Flatten(),
-            nn.Linear(64 * 64 * 32, 34 * 1001),
-            nn.Unflatten(1, (34, 1001))
-        )
+        nn.Flatten(),
+        nn.Linear(32 * 32, 34 * eeg_time_dim),
+        nn.Unflatten(1, (34, eeg_time_dim))
+    )
+
     eeg_to_fmri_decoder = nn.Sequential(
-        nn.Linear(32 * eeg_time_dim * 1 * 34, 64 * 64 * 32),
-        nn.ReLU(),
+        nn.Flatten(),
+        nn.Linear(32 * 32, 64 * 64 * 32),
         nn.Unflatten(1, (1, 64, 64, 32))
-        )
+    )
 
     # Loss and Optimizer
     criterion = nn.MSELoss()

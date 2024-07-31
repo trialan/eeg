@@ -43,7 +43,7 @@ def write_data_to_disk(output_dir="processed_data", batch_size=5):
     Y_filename = os.path.join(output_dir, "Y_data.npy")
 
     N_files = len(get_paths()[0])
-    total_sanples = 125 * N_files
+    total_samples = 125 * N_files
     X_shape = (125 * N_files, 34, 1000)
     Y_shape = (125 * N_files, 1)
 
@@ -161,7 +161,7 @@ def pair_eeg_fmri(fmri_data, events, tr=2, eeg_fs=1000):
 
     for event in events:
         # event_eeg = get_event_eeg(eeg_data, event.time)
-        event_fmri = get_event_fmri(fmri_data, event.time)
+        event_fmri = get_event_fmri(fmri_data, event[0])
         # x_list.append(event_eeg)
         y_list.append(event_fmri)
 

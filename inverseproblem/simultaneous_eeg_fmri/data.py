@@ -44,8 +44,8 @@ def write_data_to_disk(output_dir="processed_data", batch_size=5):
 
     N_files = len(get_paths()[0])
     total_samples = 125 * N_files
-    X_shape = (125 * N_files, 34, 1000)
-    Y_shape = (125 * N_files, 1)
+    X_shape = (34, 1000)
+    Y_shape = (1,)
 
     X_memmap = np.memmap(
         X_filename, dtype="float32", mode="w+", shape=(total_samples, *X_shape)

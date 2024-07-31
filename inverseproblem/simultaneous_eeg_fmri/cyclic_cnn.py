@@ -1,59 +1,76 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
-class CyclicCNN(nn.Module):
+
+class Conv3DBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0):
+        super(Conv3DBlock, self).__init__()
+        self.conv = nn.Conv3d(in_channels, out_channels, kernel_size, stride, padding)
+        self.bn = nn.BatchNorm3d(out_channels)
+        self.relu = nn.ReLU()
+
+    def forward(self, x):
+        return self.relu(self.bn(self.conv(x)))
+
+
+class Conv1DBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0):
+        super(Conv1DBlock, self).__init__()
+        self.conv = nn.Conv1d(in_channels, out_channels, kernel_size, stride, padding)
+        self.bn = nn.BatchNorm1d(out_channels)
+        self.relu = nn.ReLU()
+
+    def forward(self, x):
+        return self.relu(self.bn(self.conv(x)))
+
+
+class EEGEncoder(nn.Module):
     def __init__(self):
-        super(CyclicCNN, self).__init__()
-        
-        # EEG decoder (spatial and temporal)
-        self.eeg_decoder = nn.Sequential(
-            nn.Conv2d(in_channels=34, out_channels=64, kernel_size=(1, 3), padding=(0, 1)),
-            nn.ReLU(),
-            nn.Conv2d(in_channels=64, out_channels=128, kernel_size=(1, 3), padding=(0, 1)),
-            nn.ReLU()
-        )
-        
-        # EEG encoder (spatial and temporal)
-        self.eeg_encoder = nn.Sequential(
-            nn.ConvTranspose2d(in_channels=128, out_channels=64, kernel_size=(1, 3), padding=(0, 1)),
-            nn.ReLU(),
-            nn.ConvTranspose2d(in_channels=64, out_channels=34, kernel_size=(1, 3), padding=(0, 1)),
-            nn.ReLU()
-        )
-        
-        # fMRI decoder (spatial)
-        self.fmri_decoder = nn.Sequential(
-            nn.Conv3d(in_channels=1, out_channels=16, kernel_size=3, padding=1),
-            nn.ReLU(),
-            nn.Conv3d(in_channels=16, out_channels=32, kernel_size=3, padding=1),
-            nn.ReLU()
-        )
-        
-        # fMRI encoder (spatial)
-        self.fmri_encoder = nn.Sequential(
-            nn.ConvTranspose3d(in_channels=32, out_channels=16, kernel_size=3, padding=1),
-            nn.ReLU(),
-            nn.ConvTranspose3d(in_channels=16, out_channels=1, kernel_size=3, padding=1),
-            nn.ReLU()
-        )
+        super(EEGEncoder, self).__init__()
+        self.conv1 = Conv3DBlock(1, 16, kernel_size=3, stride=1, padding=1)
+        self.conv2 = Conv3DBlock(16, 32, kernel_size=3, stride=1, padding=1)
 
-    def eeg_to_fmri(self, eeg):
-        # eeg shape: (batch, 34, 1, 1001)
-        latent = self.eeg_decoder(eeg)
-        # Reshape latent to match fMRI dimensions
-        latent = latent.view(latent.size(0), 32, 4, 4, 4)
-        return self.fmri_encoder(latent)
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.conv2(x)
+        return x
 
-    def fmri_to_eeg(self, fmri):
-        # fmri shape: (batch, 64, 64, 32)
-        latent = self.fmri_decoder(fmri.unsqueeze(1))
-        # Reshape latent to match EEG dimensions
-        latent = latent.view(latent.size(0), 128, 1, -1)
-        return self.eeg_encoder(latent)
 
-    def forward(self, eeg, fmri):
-        eeg_to_fmri = self.eeg_to_fmri(eeg)
-        fmri_to_eeg = self.fmri_to_eeg(fmri)
-        eeg_reconstructed = self.fmri_to_eeg(eeg_to_fmri)
-        fmri_reconstructed = self.eeg_to_fmri(fmri_to_eeg)
-        return eeg_to_fmri, fmri_to_eeg, eeg_reconstructed, fmri_reconstructed
+class fMRIEncoder(nn.Module):
+    def __init__(self):
+        super(fMRIEncoder, self).__init__()
+        self.conv1 = Conv1DBlock(1, 16, kernel_size=3, stride=1, padding=1)
+        self.conv2 = Conv1DBlock(16, 32, kernel_size=3, stride=1, padding=1)
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.conv2(x)
+        return x
+
+
+class EEGDecoder(nn.Module):
+    def __init__(self):
+        super(EEGDecoder, self).__init__()
+        self.deconv1 = nn.ConvTranspose3d(32, 16, kernel_size=3, stride=1, padding=1)
+        self.deconv2 = nn.ConvTranspose3d(16, 1, kernel_size=3, stride=1, padding=1)
+
+    def forward(self, x):
+        x = self.deconv1(x)
+        x = self.deconv2(x)
+        return x
+
+
+class fMRIDecoder(nn.Module):
+    def __init__(self):
+        super(fMRIDecoder, self).__init__()
+        self.deconv1 = nn.ConvTranspose1d(32, 16, kernel_size=3, stride=1, padding=1)
+        self.deconv2 = nn.ConvTranspose1d(16, 1, kernel_size=3, stride=1, padding=1)
+
+    def forward(self, x):
+        x = self.deconv1(x)
+        x = self.deconv2(x)
+        return x
+
+
+

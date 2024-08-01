@@ -235,6 +235,7 @@ if __name__ == "__main__":
     eeg_time_dim = X_eeg.shape[2]
 
 
+    batch_size = 32
     train_dataloader, val_dataloader, test_dataloader = create_dataloaders(X_eeg, X_fmri, batch_size=batch_size)
 
     # Model Initialization
@@ -257,7 +258,6 @@ if __name__ == "__main__":
         nn.Unflatten(1, (1, 64, 64, 32))
     )
 
-    batch_size = 32
     lr = 0.001
     weight_decay = 0.
     dropout_rate = 0.

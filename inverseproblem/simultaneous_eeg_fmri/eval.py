@@ -82,7 +82,12 @@ if __name__ == '__main__':
     print(se)
 
     y_fmri = read_pickle("fmri_y.pkl")
-    x_fmri = read_pickle("fmri_x.pkl")
+    x_fmri = read_pickle("fmri_X.pkl")
+    y_fmri = y_fmri[test_ixs]
+    x_fmri = x_fmri[test_ixs]
+
+    assert np.array_equal(y_fmri, y_eeg)
+
     from eeg.inverseproblem.simultaneous_eeg_fmri.cnn import FMRI_CNN
 
     X_fmri_balanced, y_fmri_balanced = balance_and_shuffle(x_fmri, y_fmri)

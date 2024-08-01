@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import torch.nn.functional as F
 from tqdm import tqdm
 import numpy as np
 from sklearn.model_selection import train_test_split
@@ -38,37 +39,70 @@ class FMRI_CNN(nn.Module):
         return torch.sigmoid(x)
 
 
-class Big_FMRI_CNN(nn.Module):
+
+class AdvancedFMRI_CNN(nn.Module):
     def __init__(self):
-        super(FMRI_CNN, self).__init__()
+        super(AdvancedFMRI_CNN, self).__init__()
+        
+        # Initial 3D convolution
         self.conv1 = nn.Conv3d(1, 32, kernel_size=3, padding=1)
         self.bn1 = nn.BatchNorm3d(32)
-        self.conv2 = nn.Conv3d(32, 64, kernel_size=3, padding=1)
-        self.bn2 = nn.BatchNorm3d(64)
-        self.conv3 = nn.Conv3d(64, 128, kernel_size=3, padding=1)
-        self.bn3 = nn.BatchNorm3d(128)
-        self.conv4 = nn.Conv3d(128, 256, kernel_size=3, padding=1)
-        self.bn4 = nn.BatchNorm3d(256)
-        self.pool = nn.MaxPool3d(kernel_size=2, stride=2)
-        self.fc1 = nn.Linear(256 * 4 * 4 * 2, 512)
-        self.fc2 = nn.Linear(512, 128)
-        self.fc3 = nn.Linear(128, 1)
-        self.relu = nn.ReLU()
+        
+        # Residual blocks
+        self.res_block1 = ResidualBlock(32, 64)
+        self.res_block2 = ResidualBlock(64, 128)
+        self.res_block3 = ResidualBlock(128, 256)
+        
+        # Global Average Pooling
+        self.global_avg_pool = nn.AdaptiveAvgPool3d(1)
+        
+        # Fully connected layers
+        self.fc1 = nn.Linear(256, 128)
+        self.fc2 = nn.Linear(128, 64)
+        self.fc3 = nn.Linear(64, 1)
+        
         self.dropout = nn.Dropout(0.5)
 
     def forward(self, x):
-        x = self.pool(self.relu(self.bn1(self.conv1(x))))
-        x = self.pool(self.relu(self.bn2(self.conv2(x))))
-        x = self.pool(self.relu(self.bn3(self.conv3(x))))
-        x = self.pool(self.relu(self.bn4(self.conv4(x))))
-        x = x.view(-1, 256 * 4 * 4 * 2)
-        x = self.relu(self.fc1(x))
+        x = F.relu(self.bn1(self.conv1(x)))
+        
+        x = self.res_block1(x)
+        x = self.res_block2(x)
+        x = self.res_block3(x)
+        
+        x = self.global_avg_pool(x)
+        x = x.view(x.size(0), -1)
+        
+        x = F.relu(self.fc1(x))
         x = self.dropout(x)
-        x = self.relu(self.fc2(x))
+        x = F.relu(self.fc2(x))
         x = self.dropout(x)
         x = self.fc3(x)
+        
         return torch.sigmoid(x)
 
+class ResidualBlock(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super(ResidualBlock, self).__init__()
+        self.conv1 = nn.Conv3d(in_channels, out_channels, kernel_size=3, padding=1)
+        self.bn1 = nn.BatchNorm3d(out_channels)
+        self.conv2 = nn.Conv3d(out_channels, out_channels, kernel_size=3, padding=1)
+        self.bn2 = nn.BatchNorm3d(out_channels)
+        
+        self.shortcut = nn.Sequential()
+        if in_channels != out_channels:
+            self.shortcut = nn.Sequential(
+                nn.Conv3d(in_channels, out_channels, kernel_size=1),
+                nn.BatchNorm3d(out_channels)
+            )
+
+    def forward(self, x):
+        residual = x
+        out = F.relu(self.bn1(self.conv1(x)))
+        out = self.bn2(self.conv2(out))
+        out += self.shortcut(residual)
+        out = F.relu(out)
+        return out
 
 def train(model, X, y, epochs=50, batch_size=32, seed=42, val_size=0.2):
     # Set seed for reproducibility
@@ -211,12 +245,14 @@ if __name__ == "__main__":
     from eeg.inverseproblem.simultaneous_eeg_fmri._fmri_data import get_raw_fmri_data
 
     # X, y = get_raw_fmri_data("/root/DS116/")
-    model = FMRI_CNN()
+    #model = Big_FMRI_CNN()
+    model = AdvancedFMRI_CNN()
     criterion = nn.BCELoss()
     X = read_pickle("fmri_X.pkl")
     y = read_pickle("fmri_y.pkl")
     Xb, yb = balance_and_shuffle(X, y)
     cv = get_cv()
     #train_cv(FMRI_CNN, Xb, yb, cv)
+    train(model, Xb, yb)
 
 

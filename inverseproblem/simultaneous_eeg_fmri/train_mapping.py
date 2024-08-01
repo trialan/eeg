@@ -27,8 +27,18 @@ def downsample_eeg(eeg_data, original_rate=500, target_rate=2.86):
     return eeg_data[:, :, ::downsample_factor]
 
 
-def train_epoch(dataloader, optimizer, criterion, eeg_encoder, fmri_encoder, eeg_decoder, fmri_decoder, eeg_to_fmri_decoder, fmri_to_eeg_decoder):
-    """ Sort of bad practice to have so many args. Fix later """
+def train_epoch(
+    dataloader,
+    optimizer,
+    criterion,
+    eeg_encoder,
+    fmri_encoder,
+    eeg_decoder,
+    fmri_decoder,
+    eeg_to_fmri_decoder,
+    fmri_to_eeg_decoder,
+):
+    """Sort of bad practice to have so many args. Fix later"""
     eeg_encoder.train()
     fmri_encoder.train()
     eeg_decoder.train()
@@ -69,8 +79,16 @@ def train_epoch(dataloader, optimizer, criterion, eeg_encoder, fmri_encoder, eeg
     return total_loss / len(dataloader)
 
 
-def validate(dataloader, criterion, eeg_encoder, fmri_encoder, eeg_decoder, fmri_decoder,
-                eeg_to_fmri_decoder, fmri_to_eeg_decoder):
+def validate(
+    dataloader,
+    criterion,
+    eeg_encoder,
+    fmri_encoder,
+    eeg_decoder,
+    fmri_decoder,
+    eeg_to_fmri_decoder,
+    fmri_to_eeg_decoder,
+):
     eeg_encoder.eval()
     fmri_encoder.eval()
     eeg_decoder.eval()
@@ -105,27 +123,39 @@ def validate(dataloader, criterion, eeg_encoder, fmri_encoder, eeg_decoder, fmri
     return total_loss / len(dataloader)
 
 
-def create_dataloaders(
-    X_eeg,
-    X_fmri,
-    batch_size,
-    train_size=0.7,
-    val_size=0.15,
-    test_size=0.15,
-    random_state=42,
+def create_split_indices(
+    data_length, train_size=0.7, val_size=0.15, test_size=0.15, random_state=42
 ):
-    # First split: separate test set
-    X_eeg_trainval, X_eeg_test, X_fmri_trainval, X_fmri_test = train_test_split(
-        X_eeg, X_fmri, test_size=test_size, random_state=random_state
+    # Create indices for the entire dataset
+    indices = np.arange(data_length)
+
+    # First split: separate test indices
+    train_val_indices, test_indices = train_test_split(
+        indices, test_size=test_size, random_state=random_state
     )
 
-    # Second split: separate train and validation sets
+    # Second split: separate train and validation indices
     val_size_adjusted = val_size / (train_size + val_size)
-    X_eeg_train, X_eeg_val, X_fmri_train, X_fmri_val = train_test_split(
-        X_eeg_trainval,
-        X_fmri_trainval,
-        test_size=val_size_adjusted,
-        random_state=random_state,
+    train_indices, val_indices = train_test_split(
+        train_val_indices, test_size=val_size_adjusted, random_state=random_state
+    )
+
+    return train_indices, val_indices, test_indices
+
+
+def create_dataloaders(X_eeg, X_fmri, batch_size, indices):
+    train_indices, val_indices, test_indices = indices
+
+    # Split the data using the indices
+    X_eeg_train, X_eeg_val, X_eeg_test = (
+        X_eeg[train_indices],
+        X_eeg[val_indices],
+        X_eeg[test_indices],
+    )
+    X_fmri_train, X_fmri_val, X_fmri_test = (
+        X_fmri[train_indices],
+        X_fmri[val_indices],
+        X_fmri[test_indices],
     )
 
     # Create datasets
@@ -138,85 +168,7 @@ def create_dataloaders(
     val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
     test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
-    return train_dataloader, val_dataloader, test_dataloader
-
-
-def objective(trial):
-    # Define hyperparameters to optimize
-    batch_size = trial.suggest_int('batch_size', 32, 256)
-    lr = trial.suggest_float('lr', 1e-5, 1e-1)
-    weight_decay = trial.suggest_float('weight_decay', 1e-10, 1e-3)
-    dropout_rate = trial.suggest_uniform('dropout_rate', 0.1, 0.5)
-
-    # Create dataloaders
-    train_dataloader, val_dataloader, test_dataloader = create_dataloaders(X_eeg, X_fmri, batch_size=batch_size)
-
-    # Model Initialization
-    eeg_encoder = EEGEncoder(dropout_rate=dropout_rate)
-    fmri_encoder = fMRIEncoder(dropout_rate=dropout_rate)
-    eeg_decoder = EEGDecoder(dropout_rate=dropout_rate)
-    fmri_decoder = fMRIDecoder(dropout_rate=dropout_rate)
-
-    fmri_to_eeg_decoder = nn.Sequential(
-        nn.Flatten(),
-        nn.Linear(32 * 32, 34 * eeg_time_dim),
-        nn.Dropout(dropout_rate),
-        nn.Unflatten(1, (34, eeg_time_dim)),
-    )
-
-    eeg_to_fmri_decoder = nn.Sequential(
-        nn.Flatten(), 
-        nn.Linear(32 * 32, 64 * 64 * 32), 
-        nn.Dropout(dropout_rate),
-        nn.Unflatten(1, (1, 64, 64, 32))
-    )
-
-    # Loss and Optimizer
-    criterion = nn.MSELoss()
-    optimizer = optim.Adam(
-        list(eeg_encoder.parameters())
-        + list(fmri_encoder.parameters())
-        + list(eeg_decoder.parameters())
-        + list(fmri_decoder.parameters())
-        + list(eeg_to_fmri_decoder.parameters())
-        + list(fmri_to_eeg_decoder.parameters()),
-        lr=lr,
-        weight_decay=weight_decay
-    )
-
-    # Training loop
-    num_epochs = 100  # Maximum number of epochs
-    best_val_loss = float('inf')
-    patience = 3
-    patience_counter = 0
-
-    for epoch in range(num_epochs):
-        train_loss = train_epoch(train_dataloader, optimizer, criterion, eeg_encoder,
-                            fmri_encoder, eeg_decoder, fmri_decoder,
-                            eeg_to_fmri_decoder, fmri_to_eeg_decoder)
-
-        val_loss = validate(val_dataloader, criterion, eeg_encoder,
-                            fmri_encoder, eeg_decoder, fmri_decoder,
-                            eeg_to_fmri_decoder, fmri_to_eeg_decoder)
-        if val_loss < best_val_loss:
-            best_val_loss = val_loss
-            patience_counter = 0
-        else:
-            patience_counter += 1
-
-        # Report intermediate objective value
-        trial.report(val_loss, epoch)
-
-        # Early stopping
-        if patience_counter >= patience:
-            print(f"Early stopping triggered at epoch {epoch + 1}")
-            break
-
-        # Handle pruning based on the intermediate value
-        if trial.should_prune():
-            raise optuna.TrialPruned()
-
-    return best_val_loss
+    return train_dataloader, val_dataloader, test_dataloader, test_indices
 
 
 if __name__ == "__main__":
@@ -231,12 +183,20 @@ if __name__ == "__main__":
     X_eeg = torch.tensor(X_eeg).float()
     X_fmri = torch.tensor(X_fmri).float()
 
-    X_eeg = downsample_eeg(X_eeg)
-    eeg_time_dim = X_eeg.shape[2]
+    X_eeg_downsampled = downsample_eeg(X_eeg)
+    eeg_time_dim = X_eeg_downsampled.shape[2]
 
+    split_indices = create_split_indices(len(X_eeg))
+    test_indices = split_indices[2]
 
     batch_size = 32
-    train_dataloader, val_dataloader, test_dataloader = create_dataloaders(X_eeg, X_fmri, batch_size=batch_size)
+    lr = 0.001
+    weight_decay = 0.0
+    dropout_rate = 0.0
+
+    train_dataloader, val_dataloader, test_dataloader = create_dataloaders(
+        X_eeg_downsampled, X_fmri, batch_size, split_indices
+    )
 
     # Model Initialization
     eeg_encoder = EEGEncoder(dropout_rate=dropout_rate)
@@ -255,12 +215,9 @@ if __name__ == "__main__":
         nn.Flatten(),
         nn.Linear(32 * 32, 64 * 64 * 32),
         nn.Dropout(dropout_rate),
-        nn.Unflatten(1, (1, 64, 64, 32))
+        nn.Unflatten(1, (1, 64, 64, 32)),
     )
 
-    lr = 0.001
-    weight_decay = 0.
-    dropout_rate = 0.
     # Loss and Optimizer
     criterion = nn.MSELoss()
     optimizer = optim.Adam(
@@ -271,24 +228,38 @@ if __name__ == "__main__":
         + list(eeg_to_fmri_decoder.parameters())
         + list(fmri_to_eeg_decoder.parameters()),
         lr=lr,
-        weight_decay=weight_decay
+        weight_decay=weight_decay,
     )
 
     # Training loop
     num_epochs = 100  # Maximum number of epochs
-    best_val_loss = float('inf')
+    best_val_loss = float("inf")
     patience = 3
     patience_counter = 0
 
     for epoch in range(num_epochs):
-        train_loss = train_epoch(train_dataloader, optimizer, criterion, eeg_encoder,
-                            fmri_encoder, eeg_decoder, fmri_decoder,
-                            eeg_to_fmri_decoder, fmri_to_eeg_decoder)
+        train_loss = train_epoch(
+            train_dataloader,
+            optimizer,
+            criterion,
+            eeg_encoder,
+            fmri_encoder,
+            eeg_decoder,
+            fmri_decoder,
+            eeg_to_fmri_decoder,
+            fmri_to_eeg_decoder,
+        )
 
-        val_loss = validate(val_dataloader, criterion, eeg_encoder,
-                            fmri_encoder, eeg_decoder, fmri_decoder,
-                            eeg_to_fmri_decoder, fmri_to_eeg_decoder)
-
+        val_loss = validate(
+            val_dataloader,
+            criterion,
+            eeg_encoder,
+            fmri_encoder,
+            eeg_decoder,
+            fmri_decoder,
+            eeg_to_fmri_decoder,
+            fmri_to_eeg_decoder,
+        )
 
         print(
             f"Epoch {epoch + 1}/{num_epochs}, Train Loss: {train_loss}, Val Loss: {val_loss}"

@@ -6,8 +6,8 @@ from eeg.utils import read_pickle
 from eeg.inverseproblem.simultaneous_eeg_fmri._eeg_data import get_raw_eeg_data
 from eeg.inverseproblem.simultaneous_eeg_fmri._fmri_data import get_raw_fmri_data
 
-#root_dir = "/Users/thomasrialan/Documents/code/DS116/"
-root_dir = "/root/DS116/"
+root_dir = "/Users/thomasrialan/Documents/code/DS116/"
+#root_dir = "/root/DS116/"
 balanced_length = 1916
 
 
@@ -52,7 +52,7 @@ def balance_and_shuffle(X, y):
     N = len(X_minority)
     # Upsample minority class
     X_minority_upsampled, y_minority_upsampled = resample(
-        X_minority, y_minority, replace=True, n_samples=N, random_state=42
+        X_minority, y_minority, replace=False, n_samples=N, random_state=42
     )
     # Combine majority class with upsampled minority class
     X_balanced = np.vstack((X_majority[:N], X_minority_upsampled))
@@ -117,5 +117,5 @@ def create_dataloaders(X_eeg, X_fmri, batch_size):
 
 if __name__ == '__main__':
     de = get_eeg_data()
-    df = get_fmri_data()
+    #df = get_fmri_data()
 

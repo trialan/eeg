@@ -36,43 +36,35 @@ def results_and_train(clf, X, y, cv, model=None, is_nn=False):
 
 
 if __name__ == '__main__':
-    X_eeg, y_eeg = get_eeg_data(root_dir)
-    from eeg.utils import read_pickle, results, get_cv
+    from eeg.inverseproblem.simultaneous_eeg_fmri.data import get_aligned_data
 
-    test_ixs = read_pickle("eeg_test_indices.pkl")
-    X_eeg = X_eeg[test_ixs]
-    y_eeg = y_eeg[test_ixs]
+    data = get_aligned_data()
+    X_eeg = data['eeg']['test']['X']
+    y_eeg = data['eeg']['test']['y']
+    X_fmri = data['fmri']['test']['X']
+    y_fmri = data['fmri']['test']['y']
 
-    X_eeg_balanced, y_eeg_balanced = balance_and_shuffle(X_eeg, y_eeg)
 
     cv = get_cv()
-    Xcov = pyriemann.estimation.Covariances('oas').fit_transform(X_eeg_balanced)
+    Xcov = pyriemann.estimation.Covariances('oas').fit_transform(X_eeg)
     FgMDM = pyriemann.classification.FgMDM()
-    score, se = results_and_train(FgMDM, Xcov, y_eeg_balanced, cv)
+    score, se = results_and_train(FgMDM, Xcov, y_eeg, cv)
     print(score)
     print(se)
 
     from eeg.plot_reproduction import assemble_classifier_CSPLDA
     clf = assemble_classifier_CSPLDA(25)
-    score, se = results_and_train(clf, X_eeg_balanced, y_eeg_balanced, cv)
+    score, se = results_and_train(clf, X_eeg, y_eeg, cv)
     print(score)
     print(se)
 
-    y_fmri = read_pickle("fmri_y.pkl")
-    x_fmri = read_pickle("fmri_X.pkl")
-    y_fmri = y_fmri[test_ixs]
-    x_fmri = x_fmri[test_ixs]
-
-    assert np.array_equal(y_fmri, y_eeg)
-
     from eeg.inverseproblem.simultaneous_eeg_fmri.cnn import FMRI_CNN
 
-    X_fmri_balanced, y_fmri_balanced = balance_and_shuffle(x_fmri, y_fmri)
 
     model = FMRI_CNN()
     criterion = nn.BCELoss()
     optimizer = optim.Adam(model.parameters())
-    score, se = results_and_train(None, X_fmri_balanced, y_fmri_balanced, cv, model = model, is_nn=True)
+    score, se = results_and_train(None, X_fmri, y_fmri, cv, model = model, is_nn=True)
 
     print(score)
     print(se)

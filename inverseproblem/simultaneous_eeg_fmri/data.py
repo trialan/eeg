@@ -7,64 +7,63 @@ from eeg.inverseproblem.simultaneous_eeg_fmri._eeg_data import get_raw_eeg_data
 from eeg.inverseproblem.simultaneous_eeg_fmri._fmri_data import get_raw_fmri_data
 
 root_dir = "/Users/thomasrialan/Documents/code/DS116/"
-#root_dir = "/root/DS116/"
+# root_dir = "/root/DS116/"
 balanced_length = 1916
 
 
-def get_fmri_data(pickle=True):
+def get_aligned_data(pickle=True):
+    X_eeg, y_eeg = get_raw_eeg_data(root_dir)
+
     if pickle:
         X_fmri = read_pickle("fmri_X.pkl")
         y_fmri = read_pickle("fmri_y.pkl")
     else:
         X_fmri, y_fmri = get_raw_fmri_data(root_dir)
-    X_fmri_balanced, y_fmri_balanced = balance_and_shuffle(X_fmri, y_fmri)
-    assert len(y_fmri_balanced) == balanced_length
+
+    assert np.array_equal(y_eeg, y_fmri), "EEG and fMRI labels are not aligned!"
+
+    # Balance the data once
+    indices_balanced = balance_indices(y_eeg)
+
+    X_eeg_balanced = X_eeg[indices_balanced]
+    X_fmri_balanced = X_fmri[indices_balanced]
+    y_balanced = y_eeg[indices_balanced]  # or y_fmri, they should be the same
+
+    assert len(y_balanced) == balanced_length
+
+    # Create split indices once
     train_ixs, val_ixs, test_ixs = create_split_indices()
-    data = {"train": {"X": X_fmri_balanced[train_ixs],
-                      "y": y_fmri_balanced[train_ixs]},
-            "val":   {"X": X_fmri_balanced[val_ixs],
-                      "y": y_fmri_balanced[val_ixs]},
-            "test":  {"X": X_fmri_balanced[test_ixs],
-                      "y": y_fmri_balanced[test_ixs]}}
+
+    data = {
+        "eeg": {
+            "train": {"X": X_eeg_balanced[train_ixs], "y": y_balanced[train_ixs]},
+            "val": {"X": X_eeg_balanced[val_ixs], "y": y_balanced[val_ixs]},
+            "test": {"X": X_eeg_balanced[test_ixs], "y": y_balanced[test_ixs]},
+        },
+        "fmri": {
+            "train": {"X": X_fmri_balanced[train_ixs], "y": y_balanced[train_ixs]},
+            "val": {"X": X_fmri_balanced[val_ixs], "y": y_balanced[val_ixs]},
+            "test": {"X": X_fmri_balanced[test_ixs], "y": y_balanced[test_ixs]},
+        },
+    }
+    for subset in ["train", "val", "test"]:
+        assert np.array_equal(data['eeg'][subset]['y'], data['fmri'][subset]['y'])
     return data
 
 
-def get_eeg_data():
-    X_eeg, y_eeg = get_raw_eeg_data(root_dir)
-    X_eeg_balanced, y_eeg_balanced = balance_and_shuffle(X_eeg, y_eeg)
-    assert len(y_eeg_balanced) == balanced_length
-    train_ixs, val_ixs, test_ixs = create_split_indices()
-    data = {"train": {"X": X_eeg_balanced[train_ixs],
-                      "y": y_eeg_balanced[train_ixs]},
-            "val":   {"X": X_eeg_balanced[val_ixs],
-                      "y": y_eeg_balanced[val_ixs]},
-            "test":  {"X": X_eeg_balanced[test_ixs],
-                      "y": y_eeg_balanced[test_ixs]}}
-    return data
+def balance_indices(y, random_state=42):
+    majority_class = int(np.mean(y))
+    minority_indices = np.where(y != majority_class)[0]
+    majority_indices = np.where(y == majority_class)[0]
 
+    N = len(minority_indices)
+    np.random.seed(random_state)
+    majority_indices_sampled = np.random.choice(majority_indices, N, replace=False)
 
-def balance_and_shuffle(X, y):
-    # Separate majority and minority classes
-    X_majority = X[y == 0]
-    y_majority = y[y == 0]
-    X_minority = X[y == 1]
-    y_minority = y[y == 1]
-    N = len(X_minority)
-    # Upsample minority class
-    X_minority_upsampled, y_minority_upsampled = resample(
-        X_minority, y_minority, replace=False, n_samples=N, random_state=42
-    )
-    # Combine majority class with upsampled minority class
-    X_balanced = np.vstack((X_majority[:N], X_minority_upsampled))
-    y_balanced = np.hstack((y_majority[:N], y_minority_upsampled))
-    # Shuffle the balanced dataset
-    shuffle_indices = np.random.permutation(len(y_balanced))
-    X_balanced_shuffled = X_balanced[shuffle_indices]
-    y_balanced_shuffled = y_balanced[shuffle_indices]
-    print(X_balanced.shape)
-    print(y_balanced.shape)
-    return X_balanced_shuffled, y_balanced_shuffled
+    balanced_indices = np.concatenate([minority_indices, majority_indices_sampled])
+    np.random.shuffle(balanced_indices)
 
+    return balanced_indices
 
 
 def create_split_indices(
@@ -88,21 +87,6 @@ def create_split_indices(
 
 
 def create_dataloaders(X_eeg, X_fmri, batch_size):
-    train_indices, val_indices, test_indices = create_split_indices()
-
-    # Split the data using the indices
-    X_eeg_train, X_eeg_val, X_eeg_test = (
-        X_eeg[train_indices],
-        X_eeg[val_indices],
-        X_eeg[test_indices],
-    )
-    X_fmri_train, X_fmri_val, X_fmri_test = (
-        X_fmri[train_indices],
-        X_fmri[val_indices],
-        X_fmri[test_indices],
-    )
-
-    # Create datasets
     train_dataset = TensorDataset(X_eeg_train, X_fmri_train)
     val_dataset = TensorDataset(X_eeg_val, X_fmri_val)
     test_dataset = TensorDataset(X_eeg_test, X_fmri_test)
@@ -115,7 +99,6 @@ def create_dataloaders(X_eeg, X_fmri, batch_size):
     return train_dataloader, val_dataloader, test_dataloader
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     de = get_eeg_data()
-    #df = get_fmri_data()
-
+    df = get_fmri_data()

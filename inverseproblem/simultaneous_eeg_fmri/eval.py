@@ -4,8 +4,6 @@ import torch.nn as nn
 import torch.optim as optim
 
 from eeg.inverseproblem.simultaneous_eeg_fmri.cnn import FMRI_CNN, train
-from eeg.inverseproblem.simultaneous_eeg_fmri.eeg_data import get_eeg_data
-
 
 #root_dir = "/Users/thomasrialan/Documents/code/DS116/"
 root_dir = "/root/DS116/"

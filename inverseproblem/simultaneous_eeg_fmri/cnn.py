@@ -72,8 +72,7 @@ def train(model, X, y, epochs=50, batch_size=32):
             f"Epoch {epoch+1}, Loss: {epoch_loss:.4f}, Accuracy: {epoch_accuracy:.4f}"
         )
 
-
-model = FMRI_CNN()
-criterion = nn.BCELoss()
-optimizer = optim.Adam(model.parameters())
-train(model, X_resampled, y_resampled)
+if __name__ == '__main__':
+    model = FMRI_CNN()
+    criterion = nn.BCELoss()
+    optimizer = optim.Adam(model.parameters())

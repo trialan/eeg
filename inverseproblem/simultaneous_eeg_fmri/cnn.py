@@ -4,6 +4,7 @@ import torch.optim as optim
 from tqdm import tqdm
 import numpy as np
 from sklearn.model_selection import train_test_split
+from eeg.inverseproblem.simultaneous_eeg_fmri.data import balance_and_shuffle
 
 
 class FMRI_CNN(nn.Module):
@@ -54,13 +55,13 @@ def train(model, X, y, epochs=50, batch_size=32, seed=42, val_size=0.2):
     optimizer = optim.Adam(model.parameters(), lr=0.001)
 
     model.train()
-    for epoch in tqdm(range(epochs)):
+    for epoch in range(epochs):
         # Training
         model.train()
         total_loss = 0
         correct_predictions = 0
         total_predictions = 0
-        for i in range(0, len(X_train), batch_size):
+        for i in tqdm(range(0, len(X_train), batch_size)):
             batch_X = X_train[i : i + batch_size]
             batch_y = y_train[i : i + batch_size]
             optimizer.zero_grad()
@@ -93,30 +94,14 @@ def train(model, X, y, epochs=50, batch_size=32, seed=42, val_size=0.2):
     return model
 
 
-def balance_and_shuffle(X, y):
-    X_majority = X[y == 0]
-    y_majority = y[y == 0]
-    X_minority = X[y == 1]
-    y_minority = y[y == 1]
-
-    N = len(X_minority)
-    X_balanced = np.vstack((X_majority[:N], X_minority))
-    y_balanced = np.hstack((y_majority[:N], y_minority))
-    shuffle_indices = np.random.permutation(len(y_balanced))
-    X_balanced_shuffled = X_balanced[shuffle_indices]
-    y_balanced_shuffled = y_balanced[shuffle_indices]
-    print(X_balanced.shape)
-    print(y_balanced.shape)
-
-    return X_balanced_shuffled, y_balanced_shuffled
-
-
 if __name__ == "__main__":
     model = FMRI_CNN()
     criterion = nn.BCELoss()
     from eeg.utils import read_pickle
     from eeg.inverseproblem.simultaneous_eeg_fmri._fmri_data import get_raw_fmri_data
-    X, y = get_raw_fmri_data("/root/DS116/")
+    #X, y = get_raw_fmri_data("/root/DS116/")
+    X = read_pickle("fmri_X.pkl")
+    y = read_pickle("fmri_y.pkl")
     Xb, yb = balance_and_shuffle(X, y)
     train(model, Xb, yb)
 

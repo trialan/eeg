@@ -168,7 +168,7 @@ def create_dataloaders(X_eeg, X_fmri, batch_size, indices):
     val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
     test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
-    return train_dataloader, val_dataloader, test_dataloader, test_indices
+    return train_dataloader, val_dataloader, test_dataloader
 
 
 if __name__ == "__main__":

@@ -51,10 +51,10 @@ def train(model, X, y, epochs=50, batch_size=32, seed=42, val_size=0.2):
 
     # Define loss function and optimizer
     criterion = nn.BCELoss()
-    optimizer = optim.Adam(model.parameters())
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
 
     model.train()
-    for epoch in range(epochs):
+    for epoch in tqdm(range(epochs)):
         # Training
         model.train()
         total_loss = 0
@@ -93,20 +93,31 @@ def train(model, X, y, epochs=50, batch_size=32, seed=42, val_size=0.2):
     return model
 
 
+def balance_and_shuffle(X, y):
+    X_majority = X[y == 0]
+    y_majority = y[y == 0]
+    X_minority = X[y == 1]
+    y_minority = y[y == 1]
+
+    N = len(X_minority)
+    X_balanced = np.vstack((X_majority[:N], X_minority))
+    y_balanced = np.hstack((y_majority[:N], y_minority))
+    shuffle_indices = np.random.permutation(len(y_balanced))
+    X_balanced_shuffled = X_balanced[shuffle_indices]
+    y_balanced_shuffled = y_balanced[shuffle_indices]
+    print(X_balanced.shape)
+    print(y_balanced.shape)
+
+    return X_balanced_shuffled, y_balanced_shuffled
+
+
 if __name__ == "__main__":
     model = FMRI_CNN()
     criterion = nn.BCELoss()
     from eeg.utils import read_pickle
-    optimizer = optim.Adam(model.parameters())
-    y = read_pickle("fmri_y.pkl")
-    X = read_pickle("fmri_X.pkl")
-
-    from eeg.inverseproblem.simultaneous_eeg_fmri.eval import balance_and_shuffle
-
+    from eeg.inverseproblem.simultaneous_eeg_fmri._fmri_data import get_raw_fmri_data
+    X, y = get_raw_fmri_data("/root/DS116/")
     Xb, yb = balance_and_shuffle(X, y)
-
     train(model, Xb, yb)
-
-
 
 

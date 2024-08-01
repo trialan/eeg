@@ -38,6 +38,38 @@ class FMRI_CNN(nn.Module):
         return torch.sigmoid(x)
 
 
+class Big_FMRI_CNN(nn.Module):
+    def __init__(self):
+        super(FMRI_CNN, self).__init__()
+        self.conv1 = nn.Conv3d(1, 32, kernel_size=3, padding=1)
+        self.bn1 = nn.BatchNorm3d(32)
+        self.conv2 = nn.Conv3d(32, 64, kernel_size=3, padding=1)
+        self.bn2 = nn.BatchNorm3d(64)
+        self.conv3 = nn.Conv3d(64, 128, kernel_size=3, padding=1)
+        self.bn3 = nn.BatchNorm3d(128)
+        self.conv4 = nn.Conv3d(128, 256, kernel_size=3, padding=1)
+        self.bn4 = nn.BatchNorm3d(256)
+        self.pool = nn.MaxPool3d(kernel_size=2, stride=2)
+        self.fc1 = nn.Linear(256 * 4 * 4 * 2, 512)
+        self.fc2 = nn.Linear(512, 128)
+        self.fc3 = nn.Linear(128, 1)
+        self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(0.5)
+
+    def forward(self, x):
+        x = self.pool(self.relu(self.bn1(self.conv1(x))))
+        x = self.pool(self.relu(self.bn2(self.conv2(x))))
+        x = self.pool(self.relu(self.bn3(self.conv3(x))))
+        x = self.pool(self.relu(self.bn4(self.conv4(x))))
+        x = x.view(-1, 256 * 4 * 4 * 2)
+        x = self.relu(self.fc1(x))
+        x = self.dropout(x)
+        x = self.relu(self.fc2(x))
+        x = self.dropout(x)
+        x = self.fc3(x)
+        return torch.sigmoid(x)
+
+
 def train(model, X, y, epochs=50, batch_size=32, seed=42, val_size=0.2):
     # Set seed for reproducibility
     torch.manual_seed(seed)
@@ -185,6 +217,6 @@ if __name__ == "__main__":
     y = read_pickle("fmri_y.pkl")
     Xb, yb = balance_and_shuffle(X, y)
     cv = get_cv()
-    train_cv(FMRI_CNN, Xb, yb, cv)
+    #train_cv(FMRI_CNN, Xb, yb, cv)
 
 

@@ -4,7 +4,10 @@ import torch.optim as optim
 from tqdm import tqdm
 import numpy as np
 from sklearn.model_selection import train_test_split
-from eeg.inverseproblem.simultaneous_eeg_fmri.data import balance_and_shuffle
+from eeg.inverseproblem.simultaneous_eeg_fmri.data import balance_and_shuffle, seed_everything
+
+
+seed_everything()
 
 
 class FMRI_CNN(nn.Module):
@@ -87,19 +90,19 @@ def train(model, X, y, epochs=50, batch_size=32, seed=42, val_size=0.2):
 
         print(
             f"Epoch {epoch+1}, "
-            f"Train Loss: {train_loss:.2f}, Train Accuracy: {train_accuracy:.2f}, "
-            f"Val Loss: {val_loss:.2f}, Val Accuracy: {val_accuracy:.2f}"
+            f"Train Loss: {train_loss:.4f}, Train Accuracy: {train_accuracy:.2f}, "
+            f"Val Loss: {val_loss:.4f}, Val Accuracy: {val_accuracy:.2f}"
         )
 
     return model
 
 
 if __name__ == "__main__":
-    model = FMRI_CNN()
-    criterion = nn.BCELoss()
     from eeg.utils import read_pickle
     from eeg.inverseproblem.simultaneous_eeg_fmri._fmri_data import get_raw_fmri_data
     #X, y = get_raw_fmri_data("/root/DS116/")
+    model = FMRI_CNN()
+    criterion = nn.BCELoss()
     X = read_pickle("fmri_X.pkl")
     y = read_pickle("fmri_y.pkl")
     Xb, yb = balance_and_shuffle(X, y)

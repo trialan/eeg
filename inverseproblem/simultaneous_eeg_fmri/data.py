@@ -1,10 +1,21 @@
 import numpy as np
+import torch
+import random
 from sklearn.utils import resample
 
 balanced_length = 1916
 
+def seed_everything(seed=42):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
 
 def balance_and_shuffle(X, y):
+    seed_everything()
     X_majority = X[y == 0]
     y_majority = y[y == 0]
     X_minority = X[y == 1]

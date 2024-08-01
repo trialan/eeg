@@ -4,7 +4,12 @@ import torch.optim as optim
 from tqdm import tqdm
 import numpy as np
 from sklearn.model_selection import train_test_split
-from eeg.inverseproblem.simultaneous_eeg_fmri.data import balance_and_shuffle, seed_everything
+from eeg.inverseproblem.simultaneous_eeg_fmri.data import (
+    balance_and_shuffle,
+    seed_everything,
+)
+from eeg.utils import get_cv
+from torch.utils.data import TensorDataset, DataLoader
 
 
 seed_everything()
@@ -97,15 +102,88 @@ def train(model, X, y, epochs=50, batch_size=32, seed=42, val_size=0.2):
     return model
 
 
+def train_cv(model_class, X, y, cv, epochs=15, batch_size=32, seed=42, val_size=0.2):
+    # Set seed for reproducibility
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+
+    # Convert X to the correct shape if it's not already
+    if X.shape[1] != 32:
+        X = np.transpose(X, (0, 3, 1, 2))  # (4875, 64, 64, 32) -> (4875, 32, 64, 64)
+
+    scores = []
+    for fold, (train_idx, val_idx) in enumerate(cv.split(X, y), 1):
+        print(f"Fold {fold}")
+
+        X_train, X_val = X[train_idx], X[val_idx]
+        y_train, y_val = y[train_idx], y[val_idx]
+
+        # Convert X and y to PyTorch tensors
+        X_train = torch.from_numpy(X_train).float().unsqueeze(1)  # Add channel dimension
+        y_train = torch.from_numpy(y_train).float().view(-1, 1)
+        X_val = torch.from_numpy(X_val).float().unsqueeze(1)
+        y_val = torch.from_numpy(y_val).float().view(-1, 1)
+
+        # Define loss function and optimizer
+        model = model_class()
+        criterion = nn.BCELoss()
+        optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+        model.train()
+        best_val_acc = 0.
+        for epoch in range(epochs):
+            # Training
+            model.train()
+            total_loss = 0
+            correct_predictions = 0
+            total_predictions = 0
+            for i in tqdm(range(0, len(X_train), batch_size)):
+                batch_X = X_train[i : i + batch_size]
+                batch_y = y_train[i : i + batch_size]
+                optimizer.zero_grad()
+                outputs = model(batch_X)
+                loss = criterion(outputs, batch_y)
+                loss.backward()
+                optimizer.step()
+                total_loss += loss.item()
+                predicted = (outputs > 0.5).float()
+                correct_predictions += (predicted == batch_y).sum().item()
+                total_predictions += batch_y.size(0)
+
+            train_loss = total_loss / (len(X_train) // batch_size)
+            train_accuracy = correct_predictions / total_predictions
+
+            # Validation
+            model.eval()
+            with torch.no_grad():
+                val_outputs = model(X_val)
+                val_loss = criterion(val_outputs, y_val).item()
+                val_predicted = (val_outputs > 0.5).float()
+                val_accuracy = (val_predicted == y_val).float().mean().item()
+                if val_accuracy > best_val_acc:
+                    best_val_acc = val_accuracy
+
+            print(
+                f"Epoch {epoch+1}, "
+                f"Train Loss: {train_loss:.4f}, Train Accuracy: {train_accuracy:.2f}, "
+                f"Val Loss: {val_loss:.4f}, Val Accuracy: {val_accuracy:.2f}"
+            )
+        scores.append(best_val_acc)
+    mean_score = np.mean(scores)
+    se = np.std(scores) / len(scores)
+    return mean_score, se
+
+
 if __name__ == "__main__":
     from eeg.utils import read_pickle
     from eeg.inverseproblem.simultaneous_eeg_fmri._fmri_data import get_raw_fmri_data
-    #X, y = get_raw_fmri_data("/root/DS116/")
+
+    # X, y = get_raw_fmri_data("/root/DS116/")
     model = FMRI_CNN()
     criterion = nn.BCELoss()
     X = read_pickle("fmri_X.pkl")
     y = read_pickle("fmri_y.pkl")
     Xb, yb = balance_and_shuffle(X, y)
-    train(model, Xb, yb)
+    train_cv(FMRI_CNN, Xb, yb, cv)
 
 

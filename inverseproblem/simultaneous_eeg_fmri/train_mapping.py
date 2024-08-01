@@ -4,7 +4,6 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 from tqdm import tqdm
-from sklearn.model_selection import train_test_split
 import optuna
 
 from eeg.utils import read_pickle
@@ -122,52 +121,6 @@ def validate(
     return total_loss / len(dataloader)
 
 
-def create_split_indices(
-    data_length, train_size=0.7, val_size=0.15, test_size=0.15, random_state=42
-):
-    # Create indices for the entire dataset
-    indices = np.arange(data_length)
-
-    # First split: separate test indices
-    train_val_indices, test_indices = train_test_split(
-        indices, test_size=test_size, random_state=random_state
-    )
-
-    # Second split: separate train and validation indices
-    val_size_adjusted = val_size / (train_size + val_size)
-    train_indices, val_indices = train_test_split(
-        train_val_indices, test_size=val_size_adjusted, random_state=random_state
-    )
-
-    return train_indices, val_indices, test_indices
-
-
-def create_dataloaders(X_eeg, X_fmri, batch_size, indices):
-    train_indices, val_indices, test_indices = indices
-
-    # Split the data using the indices
-    X_eeg_train, X_eeg_val, X_eeg_test = (
-        X_eeg[train_indices],
-        X_eeg[val_indices],
-        X_eeg[test_indices],
-    )
-    X_fmri_train, X_fmri_val, X_fmri_test = (
-        X_fmri[train_indices],
-        X_fmri[val_indices],
-        X_fmri[test_indices],
-    )
-
-    # Create datasets
-    train_dataset = TensorDataset(X_eeg_train, X_fmri_train)
-    val_dataset = TensorDataset(X_eeg_val, X_fmri_val)
-    test_dataset = TensorDataset(X_eeg_test, X_fmri_test)
-
-    # Create dataloaders
-    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
-    test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
-
-    return train_dataloader, val_dataloader, test_dataloader
 
 
 if __name__ == "__main__":
@@ -188,8 +141,6 @@ if __name__ == "__main__":
     X_eeg_downsampled = downsample_eeg(X_eeg)
     eeg_time_dim = X_eeg_downsampled.shape[2]
 
-    split_indices = create_split_indices(len(X_eeg))
-    test_indices = split_indices[2]
 
     batch_size = 32
     lr = 0.001
@@ -197,7 +148,7 @@ if __name__ == "__main__":
     dropout_rate = 0.0
 
     train_dataloader, val_dataloader, test_dataloader = create_dataloaders(
-        X_eeg_downsampled, X_fmri, batch_size, split_indices
+        X_eeg_downsampled, X_fmri, batch_size
     )
 
     # Model Initialization

@@ -36,7 +36,7 @@ Experiment notes:
 tr = 2.0  # The repetition time, TR is standard naming
 
 
-def get_fmri_data(root_dir):
+def get_raw_fmri_data(root_dir):
     bold_paths, _, event_paths = get_paths(root_dir)
     slice_order = np.loadtxt(root_dir + "ds116_metadata/supplementary/slice_order.txt")
     Xs = []

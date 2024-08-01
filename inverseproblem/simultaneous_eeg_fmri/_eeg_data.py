@@ -39,7 +39,7 @@ TMIN = -0.2
 TMAX = 0.8
 
 
-def get_eeg_data(root_dir):
+def get_raw_eeg_data(root_dir):
     _, eeg_paths, event_paths = get_paths(root_dir)
     Xs = []
     ys = []

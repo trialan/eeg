@@ -2,7 +2,6 @@ import numpy as np
 import pyriemann
 import torch.nn as nn
 import torch.optim as optim
-from sklearn.utils import resample
 
 from eeg.inverseproblem.simultaneous_eeg_fmri.cnn import FMRI_CNN, train
 from eeg.inverseproblem.simultaneous_eeg_fmri.eeg_data import get_eeg_data
@@ -10,29 +9,6 @@ from eeg.inverseproblem.simultaneous_eeg_fmri.eeg_data import get_eeg_data
 
 #root_dir = "/Users/thomasrialan/Documents/code/DS116/"
 root_dir = "/root/DS116/"
-
-
-def balance_and_shuffle(X, y):
-    # Separate majority and minority classes
-    X_majority = X[y == 0]
-    y_majority = y[y == 0]
-    X_minority = X[y == 1]
-    y_minority = y[y == 1]
-    N = len(X_minority)
-    # Upsample minority class
-    X_minority_upsampled, y_minority_upsampled = resample(
-        X_minority, y_minority, replace=True, n_samples=N, random_state=42
-    )
-    # Combine majority class with upsampled minority class
-    X_balanced = np.vstack((X_majority[:N], X_minority_upsampled))
-    y_balanced = np.hstack((y_majority[:N], y_minority_upsampled))
-    # Shuffle the balanced dataset
-    shuffle_indices = np.random.permutation(len(y_balanced))
-    X_balanced_shuffled = X_balanced[shuffle_indices]
-    y_balanced_shuffled = y_balanced[shuffle_indices]
-    print(X_balanced.shape)
-    print(y_balanced.shape)
-    return X_balanced_shuffled, y_balanced_shuffled
 
 
 def results_and_train(clf, X, y, cv, model=None, is_nn=False):
@@ -57,6 +33,7 @@ def results_and_train(clf, X, y, cv, model=None, is_nn=False):
             clf.fit(X_train, y_train)
             scores.append(clf.score(X_test, y_test))
     return np.mean(scores), np.std(scores) / np.sqrt(len(scores))
+
 
 if __name__ == '__main__':
     X_eeg, y_eeg = get_eeg_data(root_dir)

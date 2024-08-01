@@ -19,7 +19,7 @@ def get_paths(root):
             pattern = os.path.join(subject_dir, path_type, "task002_run*", file_name)
             paths.extend(glob.glob(pattern))
 
-        return np.array(paths)
+        return np.array(sorted(paths))
 
     bold_paths = _get_paths("BOLD", root)
     eeg_paths = _get_paths("EEG", root)

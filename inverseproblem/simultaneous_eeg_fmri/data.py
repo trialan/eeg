@@ -14,7 +14,7 @@ balanced_length = 1916
 def get_fmri_data(pickle=True):
     if pickle:
         X_fmri = read_pickle("fmri_X.pkl")
-        y_frmi = read_pickle("fmri_y.pkl")
+        y_fmri = read_pickle("fmri_y.pkl")
     else:
         X_fmri, y_fmri = get_raw_fmri_data(root_dir)
     X_fmri_balanced, y_fmri_balanced = balance_and_shuffle(X_fmri, y_fmri)
@@ -116,5 +116,6 @@ def create_dataloaders(X_eeg, X_fmri, batch_size):
 
 
 if __name__ == '__main__':
-    d = get_eeg_data()
+    de = get_eeg_data()
+    df = get_fmri_data()
 

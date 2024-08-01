@@ -19,7 +19,6 @@ from eeg.inverseproblem.simultaneous_eeg_fmri.cyclic_cnn import (
 
 
 root_dir = "/root/DS116/"
-# root_dir = "/Users/thomasrialan/Documents/code/DS116/"
 
 
 def downsample_eeg(eeg_data, original_rate=500, target_rate=2.86):
@@ -173,9 +172,12 @@ def create_dataloaders(X_eeg, X_fmri, batch_size, indices):
 
 if __name__ == "__main__":
     X_eeg, y_eeg = get_eeg_data(root_dir)
-    # X_fmri, y_fmri = get_fmri_data()
-    y_fmri = read_pickle("fmri_y.pkl")
-    X_fmri = read_pickle("fmri_X.pkl")
+    X_fmri, y_fmri = get_fmri_data()
+    from eeg.utils import write_pickle
+    y_fmri = write_pickle(y_fmri, "fmri_y.pkl")
+    x_fmri = write_pickle(X_fmri, "fmri_X.pkl")
+    #y_fmri = read_pickle("fmri_y.pkl")
+    #x_fmri = read_pickle("fmri_x.pkl")
 
     assert len(X_eeg) == len(X_fmri)
     assert np.array_equal(y_eeg, y_fmri)

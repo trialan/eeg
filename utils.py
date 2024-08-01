@@ -30,9 +30,12 @@ def get_covariances(M):
     return cov
 
 
-def results(clf, X, y, cv):
+def results(clf, X, y, cv, return_se=False):
     """ clf is classifier. This function trains the model and scores it """
     scores = cross_val_score(clf, X, y, cv=cv, n_jobs=None)
+    if return_se:
+        std_error = np.std(scores) / len(scores)
+        return np.mean(scores), std_error
     return np.mean(scores)
 
 

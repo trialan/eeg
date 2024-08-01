@@ -3,8 +3,10 @@ import glob
 import numpy as np
 
 
+
 def get_paths(root):
     def _get_paths(path_type, root):
+        """ important to sort for cross machine reproducibility """
         assert path_type in ["BOLD", "EEG", "behav"]
         paths = []
         file_name = {

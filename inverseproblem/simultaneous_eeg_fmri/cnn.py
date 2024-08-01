@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from tqdm import tqdm
+import numpy as np
 from sklearn.model_selection import train_test_split
 
 
@@ -95,6 +96,7 @@ def train(model, X, y, epochs=50, batch_size=32, seed=42, val_size=0.2):
 if __name__ == "__main__":
     model = FMRI_CNN()
     criterion = nn.BCELoss()
+    from eeg.utils import read_pickle
     optimizer = optim.Adam(model.parameters())
     y = read_pickle("fmri_y.pkl")
     X = read_pickle("fmri_X.pkl")

@@ -184,6 +184,7 @@ if __name__ == "__main__":
     X = read_pickle("fmri_X.pkl")
     y = read_pickle("fmri_y.pkl")
     Xb, yb = balance_and_shuffle(X, y)
+    cv = get_cv()
     train_cv(FMRI_CNN, Xb, yb, cv)
 
 

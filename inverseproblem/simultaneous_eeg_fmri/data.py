@@ -99,6 +99,3 @@ def create_dataloaders(X_eeg, X_fmri, batch_size):
     return train_dataloader, val_dataloader, test_dataloader
 
 
-if __name__ == "__main__":
-    de = get_eeg_data()
-    df = get_fmri_data()

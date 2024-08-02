@@ -51,7 +51,7 @@ def eeg_to_volume(eeg_data):
     # Assign EEG data to volume
     for channel_ix, channel_data in channel_mapping.items():
         x, y, z = channel_data["coords"]
-        volume[x-1, y-1, z-1, :] = eeg_data[channel_ix, :]
+        volume[x-1, y-1, z-1, :] = eeg_data[channel_ix-1, :]
 
     return volume
 
@@ -91,4 +91,10 @@ def visualize_eeg_volume(channel_mapping):
     plt.tight_layout()
     plt.show()
 
-
+if __name__ == '__main__':
+    num_channels = 34
+    num_timepoints = 1000
+    dummy_eeg_data = np.random.rand(num_channels, num_timepoints)
+    channel_names = list(channel_mapping.keys())  # Assuming all channels are present
+    volume_data = eeg_to_volume(dummy_eeg_data)
+    print(volume_data.shape)  # Should print (11, 9, 5, 1000)

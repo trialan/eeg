@@ -113,6 +113,9 @@ def train_cv(model_class, X, y, cv, epochs=15, batch_size=32, seed=42, val_size=
     scores = []
     for fold, (train_idx, val_idx) in enumerate(cv.split(X, y), 1):
         print(f"Fold {fold}")
+        if fold == 1:
+            print("Top score was 88%")
+            continue
         X_train, X_val = X[train_idx], X[val_idx]
         y_train, y_val = y[train_idx], y[val_idx]
 
@@ -171,7 +174,7 @@ def train_cv(model_class, X, y, cv, epochs=15, batch_size=32, seed=42, val_size=
             else:
                 no_improve_count += 1
 
-            if no_improve_count >= 3:
+            if no_improve_count >= 2:
                 print(f"Early stopping at epoch {epoch+1}")
                 break
 

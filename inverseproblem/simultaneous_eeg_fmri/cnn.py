@@ -46,21 +46,26 @@ class BV_FMRI_CNN(nn.Module):
         self.pool = nn.MaxPool3d(kernel_size=2, stride=2)
         self.conv2 = nn.Conv3d(32, 64, kernel_size=3, padding=1)
         self.conv3 = nn.Conv3d(64, 64, kernel_size=3, padding=1)
+
+        # Calculate the size after 3 pooling operations
+        self.fc1_input_size = 64 * 7 * 7 * 7
+
+        self.fc1 = nn.Linear(self.fc1_input_size, 64)
         self.fc2 = nn.Linear(64, 1)
         self.relu = nn.ReLU()
         self.dropout = nn.Dropout(0.5)
-        self.fc1_input_size = 64 * 7 * 7 * 7
-        self.fc1 = nn.Linear(self.fc1_input_size, 64)
 
     def forward(self, x):
         x = self.pool(self.relu(self.conv1(x)))
         x = self.pool(self.relu(self.conv2(x)))
         x = self.pool(self.relu(self.conv3(x)))
+
         x = x.view(-1, self.fc1_input_size)
         x = self.relu(self.fc1(x))
         x = self.dropout(x)
         x = self.fc2(x)
         return torch.sigmoid(x)
+
 
 def train(model, X, y, epochs=50, batch_size=32, seed=42, val_size=0.2):
     # Set seed for reproducibility
@@ -130,8 +135,7 @@ def train_cv(model_class, X, y, cv, epochs=15, batch_size=32, seed=42, val_size=
     torch.manual_seed(seed)
     np.random.seed(seed)
 
-    if X.shape[1] != 32:
-        X = np.transpose(X, (0, 3, 1, 2))
+    X = np.transpose(X, (0, 3, 1, 2))
 
     scores = []
     for fold, (train_idx, val_idx) in enumerate(cv.split(X, y), 1):
@@ -212,9 +216,9 @@ if __name__ == "__main__":
     X, y = get_bv_fmri_data("/root")
     model = BV_FMRI_CNN()
     criterion = nn.BCELoss()
-    #X = read_pickle("fmri_X.pkl")
-    #y = read_pickle("fmri_y.pkl")
+    X = read_pickle("fmri_X.pkl")
+    y = read_pickle("fmri_y.pkl")
     Xb, yb = balance_and_shuffle(X, y)
     cv = get_cv()
-    train_cv(FMRI_CNN, Xb, yb, cv)
+    train_cv(BV_FMRI_CNN, Xb, yb, cv)
     # train(model, Xb, yb)

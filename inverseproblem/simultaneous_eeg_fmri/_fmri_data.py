@@ -40,7 +40,7 @@ tr = 2.0  # The repetition time, TR is standard naming
 
 def get_bv_fmri_data(root_dir):
     bold_paths, _, event_paths = get_bv_paths(root_dir)
-    slice_order = np.loadtxt(os.path.join(root_dir, "ds116_metadata/supplementary/slice_order.txt"))
+    slice_order = np.loadtxt(os.path.join(root_dir, "DS116/ds116_metadata/supplementary/slice_order.txt"))
     Xs = []
     ys = []
     for bp, ep in tqdm(list(zip(bold_paths, event_paths))):

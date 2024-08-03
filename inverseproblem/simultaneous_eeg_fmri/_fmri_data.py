@@ -40,12 +40,14 @@ tr = 2.0  # The repetition time, TR is standard naming
 
 def get_bv_fmri_data(root_dir):
     bold_paths, _, event_paths = get_bv_paths(root_dir)
+    slice_order = np.loadtxt(root_dir + "ds116_metadata/supplementary/slice_order.txt")
     Xs = []
     ys = []
     for bp, ep in tqdm(list(zip(bold_paths, event_paths))):
         x = load_bv_file(bp)
         events = load_events(ep)
         fmri, labels = get_run_data(x, events)
+        fmri = preprocess_fmri(fmri, tr, slice_order)
         assert fmri.shape == (125, 56, 69, 56)
         Xs.extend(fmri)
         ys.extend(labels)

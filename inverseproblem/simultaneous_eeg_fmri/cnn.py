@@ -214,10 +214,9 @@ if __name__ == "__main__":
     from eeg.inverseproblem.simultaneous_eeg_fmri._fmri_data import get_raw_fmri_data, get_bv_fmri_data
 
     X, y = get_bv_fmri_data("/root")
-    model = BV_FMRI_CNN()
     criterion = nn.BCELoss()
-    X = read_pickle("fmri_X.pkl")
-    y = read_pickle("fmri_y.pkl")
+    #X = read_pickle("fmri_X.pkl")
+    #y = read_pickle("fmri_y.pkl")
     Xb, yb = balance_and_shuffle(X, y)
     cv = get_cv()
     train_cv(BV_FMRI_CNN, Xb, yb, cv)

@@ -41,7 +41,7 @@ class FMRI_CNN(nn.Module):
 
 class BV_FMRI_CNN(nn.Module):
     def __init__(self):
-        super(FMRI_CNN, self).__init__()
+        super(BV_FMRI_CNN, self).__init__()
         self.conv1 = nn.Conv3d(1, 32, kernel_size=3, padding=1)
         self.pool = nn.MaxPool3d(kernel_size=2, stride=2)
         self.conv2 = nn.Conv3d(32, 64, kernel_size=3, padding=1)

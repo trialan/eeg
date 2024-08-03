@@ -39,71 +39,6 @@ class FMRI_CNN(nn.Module):
         return torch.sigmoid(x)
 
 
-
-class AdvancedFMRI_CNN(nn.Module):
-    def __init__(self):
-        super(AdvancedFMRI_CNN, self).__init__()
-        
-        # Initial 3D convolution
-        self.conv1 = nn.Conv3d(1, 32, kernel_size=3, padding=1)
-        self.bn1 = nn.BatchNorm3d(32)
-        
-        # Residual blocks
-        self.res_block1 = ResidualBlock(32, 64)
-        self.res_block2 = ResidualBlock(64, 128)
-        self.res_block3 = ResidualBlock(128, 256)
-        
-        # Global Average Pooling
-        self.global_avg_pool = nn.AdaptiveAvgPool3d(1)
-        
-        # Fully connected layers
-        self.fc1 = nn.Linear(256, 128)
-        self.fc2 = nn.Linear(128, 64)
-        self.fc3 = nn.Linear(64, 1)
-        
-        self.dropout = nn.Dropout(0.5)
-
-    def forward(self, x):
-        x = F.relu(self.bn1(self.conv1(x)))
-        
-        x = self.res_block1(x)
-        x = self.res_block2(x)
-        x = self.res_block3(x)
-        
-        x = self.global_avg_pool(x)
-        x = x.view(x.size(0), -1)
-        
-        x = F.relu(self.fc1(x))
-        x = self.dropout(x)
-        x = F.relu(self.fc2(x))
-        x = self.dropout(x)
-        x = self.fc3(x)
-        
-        return torch.sigmoid(x)
-
-class ResidualBlock(nn.Module):
-    def __init__(self, in_channels, out_channels):
-        super(ResidualBlock, self).__init__()
-        self.conv1 = nn.Conv3d(in_channels, out_channels, kernel_size=3, padding=1)
-        self.bn1 = nn.BatchNorm3d(out_channels)
-        self.conv2 = nn.Conv3d(out_channels, out_channels, kernel_size=3, padding=1)
-        self.bn2 = nn.BatchNorm3d(out_channels)
-        
-        self.shortcut = nn.Sequential()
-        if in_channels != out_channels:
-            self.shortcut = nn.Sequential(
-                nn.Conv3d(in_channels, out_channels, kernel_size=1),
-                nn.BatchNorm3d(out_channels)
-            )
-
-    def forward(self, x):
-        residual = x
-        out = F.relu(self.bn1(self.conv1(x)))
-        out = self.bn2(self.conv2(out))
-        out += self.shortcut(residual)
-        out = F.relu(out)
-        return out
-
 def train(model, X, y, epochs=50, batch_size=32, seed=42, val_size=0.2):
     # Set seed for reproducibility
     torch.manual_seed(seed)
@@ -169,40 +104,37 @@ def train(model, X, y, epochs=50, batch_size=32, seed=42, val_size=0.2):
 
 
 def train_cv(model_class, X, y, cv, epochs=15, batch_size=32, seed=42, val_size=0.2):
-    # Set seed for reproducibility
     torch.manual_seed(seed)
     np.random.seed(seed)
 
-    # Convert X to the correct shape if it's not already
     if X.shape[1] != 32:
-        X = np.transpose(X, (0, 3, 1, 2))  # (4875, 64, 64, 32) -> (4875, 32, 64, 64)
+        X = np.transpose(X, (0, 3, 1, 2))
 
     scores = []
     for fold, (train_idx, val_idx) in enumerate(cv.split(X, y), 1):
         print(f"Fold {fold}")
-
         X_train, X_val = X[train_idx], X[val_idx]
         y_train, y_val = y[train_idx], y[val_idx]
 
-        # Convert X and y to PyTorch tensors
-        X_train = torch.from_numpy(X_train).float().unsqueeze(1)  # Add channel dimension
+        X_train = torch.from_numpy(X_train).float().unsqueeze(1)
         y_train = torch.from_numpy(y_train).float().view(-1, 1)
         X_val = torch.from_numpy(X_val).float().unsqueeze(1)
         y_val = torch.from_numpy(y_val).float().view(-1, 1)
 
-        # Define loss function and optimizer
         model = model_class()
         criterion = nn.BCELoss()
         optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-        model.train()
-        best_val_acc = 0.
+        best_val_loss = float("inf")
+        best_val_acc = 0.0
+        no_improve_count = 0
+
         for epoch in range(epochs):
-            # Training
             model.train()
             total_loss = 0
             correct_predictions = 0
             total_predictions = 0
+
             for i in tqdm(range(0, len(X_train), batch_size)):
                 batch_X = X_train[i : i + batch_size]
                 batch_y = y_train[i : i + batch_size]
@@ -219,40 +151,49 @@ def train_cv(model_class, X, y, cv, epochs=15, batch_size=32, seed=42, val_size=
             train_loss = total_loss / (len(X_train) // batch_size)
             train_accuracy = correct_predictions / total_predictions
 
-            # Validation
             model.eval()
             with torch.no_grad():
                 val_outputs = model(X_val)
                 val_loss = criterion(val_outputs, y_val).item()
                 val_predicted = (val_outputs > 0.5).float()
                 val_accuracy = (val_predicted == y_val).float().mean().item()
-                if val_accuracy > best_val_acc:
-                    best_val_acc = val_accuracy
 
             print(
                 f"Epoch {epoch+1}, "
                 f"Train Loss: {train_loss:.4f}, Train Accuracy: {train_accuracy:.2f}, "
                 f"Val Loss: {val_loss:.4f}, Val Accuracy: {val_accuracy:.2f}"
             )
+
+            if val_loss < best_val_loss:
+                best_val_loss = val_loss
+                best_val_acc = val_accuracy
+                no_improve_count = 0
+            else:
+                no_improve_count += 1
+
+            if no_improve_count >= 3:
+                print(f"Early stopping at epoch {epoch+1}")
+                break
+
         scores.append(best_val_acc)
+
     mean_score = np.mean(scores)
     se = np.std(scores) / len(scores)
     return mean_score, se
 
 
 if __name__ == "__main__":
-    from eeg.utils import read_pickle
+    from eeg.utils import read_pickle, write_pickle
     from eeg.inverseproblem.simultaneous_eeg_fmri._fmri_data import get_raw_fmri_data
 
-    # X, y = get_raw_fmri_data("/root/DS116/")
-    #model = Big_FMRI_CNN()
-    model = AdvancedFMRI_CNN()
+    X, y = get_raw_fmri_data("/root/DS116/")
+    write_pickle(X, "fmri_X.pkl")
+    write_pickle(y, "fmri_y.pkl")
+    model = FMRI_CNN()
     criterion = nn.BCELoss()
-    X = read_pickle("fmri_X.pkl")
-    y = read_pickle("fmri_y.pkl")
+    # X = read_pickle("fmri_X.pkl")
+    # y = read_pickle("fmri_y.pkl")
     Xb, yb = balance_and_shuffle(X, y)
     cv = get_cv()
-    #train_cv(FMRI_CNN, Xb, yb, cv)
-    train(model, Xb, yb)
-
-
+    train_cv(FMRI_CNN, Xb, yb, cv)
+    # train(model, Xb, yb)

@@ -35,17 +35,3 @@ def balance_and_shuffle(X, y):
     return X_balanced_shuffled, y_balanced_shuffled
 
 
-def create_dataloaders(X_eeg, X_fmri, batch_size):
-    train_dataset = TensorDataset(X_eeg_train, X_fmri_train)
-    val_dataset = TensorDataset(X_eeg_val, X_fmri_val)
-    test_dataset = TensorDataset(X_eeg_test, X_fmri_test)
-
-    # Create dataloaders
-    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
-    test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
-
-    return train_dataloader, val_dataloader, test_dataloader
-
-
-

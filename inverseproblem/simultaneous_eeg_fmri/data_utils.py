@@ -3,8 +3,39 @@ import glob
 import numpy as np
 
 
+def get_bv_paths(root_dir):
+    vtc_files = glob.glob(os.path.join(root_dir, "clean_fmri_ds116/*.vtc"))
+    vtc_files = sorted(vtc_files)
+    event_files = [get_matching_event_file(f, root_dir) for f in vtc_files]
+    eeg_files = [get_matching_eeg_file(f, root_dir) for f in vtc_files]
+    return np.array(vtc_files), np.array(eeg_files), np.array(event_files)
 
-def get_paths(root):
+
+def get_matching_eeg_file(filename, root_dir):
+    """ Match EEG files in DS116 to BrainVoyager .vtc files in
+        the dataset hand cleaned by Nyx """
+    filename = filename.split("/")[-1]
+    subject = filename.split("_")[0]
+    run = filename.split("_")[2]
+    matching_file = os.path.join(root_dir, "DS116", subject, "EEG", f"task002_{run}" , "EEG_rereferenced.mat")
+    return matching_file
+
+
+
+def get_matching_event_file(filename, root_dir):
+    """ Match events (event files in DS116) to BrainVoyager .vtc files in
+        the dataset hand cleaned by Nyx """
+    filename = filename.split("/")[-1]
+    subject = filename.split("_")[0]
+    run = filename.split("_")[2]
+    matching_file = os.path.join(root_dir, "DS116", subject, "behav", f"task002_{run}" , "behavdata.txt")
+    return matching_file
+
+
+def get_DS116_paths(root):
+    """ 'DS116' is the processed dataset downloaded her:
+        https://legacy.openfmri.org/dataset/ds000116/
+    """
     def _get_paths(path_type, root):
         """ important to sort for cross machine reproducibility """
         assert path_type in ["BOLD", "EEG", "behav"]
@@ -15,7 +46,7 @@ def get_paths(root):
             "behav": "behavdata.txt",
         }[path_type]
 
-        subject_pattern = os.path.join(root, "sub*")
+        subject_pattern = os.path.join(root, "DS116/sub*")
 
         for subject_dir in glob.glob(subject_pattern):
             pattern = os.path.join(subject_dir, path_type, "task002_run*", file_name)

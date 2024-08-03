@@ -3,7 +3,7 @@ import torch
 import random
 from sklearn.utils import resample
 
-balanced_length = 2066
+#balanced_length = 2066
 
 def seed_everything(seed=42):
     random.seed(seed)
@@ -22,7 +22,7 @@ def balance_and_shuffle(X, y):
     y_minority = y[y == 1]
 
     N = len(X_minority)
-    assert N == balanced_length / 2
+#    assert N == balanced_length / 2
     X_balanced = np.vstack((X_majority[:N], X_minority))
     y_balanced = np.hstack((y_majority[:N], y_minority))
     np.random.seed(42)

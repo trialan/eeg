@@ -7,9 +7,11 @@ from scipy import signal
 from scipy.ndimage import gaussian_filter
 from nilearn.image import clean_img
 from tqdm import tqdm
+from bvbabel.vtc import read_vtc
 
-from eeg.inverseproblem.simultaneous_eeg_fmri.data_utils import (get_paths,
-                                                                 load_events)
+from eeg.inverseproblem.simultaneous_eeg_fmri.data_utils import (get_DS116_paths,
+                                                                 load_events,
+                                                                 get_bv_paths)
 
 """
 This fMRI data is:
@@ -36,8 +38,34 @@ Experiment notes:
 tr = 2.0  # The repetition time, TR is standard naming
 
 
+def get_bv_fmri_data(root_dir):
+    bold_paths, _, event_paths = get_bv_paths(root_dir)
+    Xs = []
+    ys = []
+    for bp, ep in tqdm(list(zip(bold_paths, event_paths))):
+        x = load_bv_file(bp)
+        events = load_events(ep)
+        fmri, labels = get_run_data(x, events)
+        assert fmri.shape == (125, 56, 69, 56)
+        Xs.extend(fmri)
+        ys.extend(labels)
+    return np.array(Xs), np.array(ys)
+
+
+def load_bv_file(path):
+    info, data = read_vtc(path)
+    return data
+
+
+"""
+    Code below here is for reading the processed data downloaded from
+    openfmri. Code above is for reading the BrainVoyager files generated
+    by Nyx after preprocessing them manually.
+"""
+
+
 def get_raw_fmri_data(root_dir):
-    bold_paths, _, event_paths = get_paths(root_dir)
+    bold_paths, _, event_paths = get_DS116_paths(root_dir)
     slice_order = np.loadtxt(root_dir + "ds116_metadata/supplementary/slice_order.txt")
     Xs = []
     ys = []
@@ -111,8 +139,5 @@ def slice_timing_correction(fmri_data, slice_order, tr):
 
     return corrected_data
 
-
-if __name__ == '__main__':
-    X, y = get_data()
 
 

@@ -6,7 +6,7 @@ import numpy as np
 from tqdm import tqdm
 from sklearn.utils import resample
 
-from eeg.inverseproblem.simultaneous_eeg_fmri.data_utils import (get_paths,
+from eeg.inverseproblem.simultaneous_eeg_fmri.data_utils import (get_DS116_paths,
                                                                  load_events)
 
 
@@ -40,7 +40,7 @@ TMAX = 0.8
 
 
 def get_raw_eeg_data(root_dir):
-    _, eeg_paths, event_paths = get_paths(root_dir)
+    _, eeg_paths, event_paths = get_DS116_paths(root_dir)
     Xs = []
     ys = []
     for eegp, eventp in list(zip(eeg_paths, event_paths)):

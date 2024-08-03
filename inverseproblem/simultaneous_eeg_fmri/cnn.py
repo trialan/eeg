@@ -48,7 +48,7 @@ class BV_FMRI_CNN(nn.Module):
         self.conv3 = nn.Conv3d(64, 64, kernel_size=3, padding=1)
 
         # Calculate the size after 3 pooling operations
-        self.fc1_input_size = 64 * 7 * 7 * 7
+        self.fc1_input_size = 64 * 7 * 7 * 8
 
         self.fc1 = nn.Linear(self.fc1_input_size, 64)
         self.fc2 = nn.Linear(64, 1)
@@ -135,7 +135,7 @@ def train_cv(model_class, X, y, cv, epochs=15, batch_size=32, seed=42, val_size=
     torch.manual_seed(seed)
     np.random.seed(seed)
 
-    X = np.transpose(X, (0, 3, 1, 2))
+    X = np.transpose(X, (0, 3, 1, 2)) #dont remember why i bothered with this...?
 
     scores = []
     for fold, (train_idx, val_idx) in enumerate(cv.split(X, y), 1):

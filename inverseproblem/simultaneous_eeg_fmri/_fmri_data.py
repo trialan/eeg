@@ -68,7 +68,7 @@ def load_bv_file(path):
 
 def get_raw_fmri_data(root_dir):
     bold_paths, _, event_paths = get_DS116_paths(root_dir)
-    slice_order = np.loadtxt(root_dir + "ds116_metadata/supplementary/slice_order.txt")
+    slice_order = np.loadtxt(root_dir + "DS116/ds116_metadata/supplementary/slice_order.txt")
     Xs = []
     ys = []
     for bp, ep in tqdm(list(zip(bold_paths, event_paths))):
@@ -114,8 +114,9 @@ def preprocess_fmri(fmri_data, tr, slice_order):
     ).get_fdata()
     fmri_data_smoothed = gaussian_filter(fmri_data_highpass, sigma=(1.5, 1.5, 1.5, 0))
     fmri_data_reshaped = np.transpose(fmri_data_smoothed, (1, 2, 3, 0))
-    fmri_data_stc = slice_timing_correction(fmri_data_reshaped, slice_order, tr)
-    return np.transpose(fmri_data_stc, (3, 0, 1, 2))
+    #fmri_data_stc = slice_timing_correction(fmri_data_reshaped, slice_order, tr)
+    #be careful to return fmri_data_stc when you change this
+    return np.transpose(fmri_data_reshaped, (3, 0, 1, 2))
 
 
 def slice_timing_correction(fmri_data, slice_order, tr):

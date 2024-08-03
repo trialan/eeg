@@ -215,6 +215,8 @@ if __name__ == "__main__":
 
     X, y = get_bv_fmri_data("/root")
     criterion = nn.BCELoss()
+    write_pickle(X, "fmri_bvp_X.pkl")
+    write_pickle(y, "fmri_bvp_y.pkl")
     #X = read_pickle("fmri_X.pkl")
     #y = read_pickle("fmri_y.pkl")
     Xb, yb = balance_and_shuffle(X, y)

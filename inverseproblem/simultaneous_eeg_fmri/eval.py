@@ -10,8 +10,8 @@ from eeg.inverseproblem.simultaneous_eeg_fmri.data import balance_and_shuffle
 from eeg.inverseproblem.simultaneous_eeg_fmri._eeg_data import get_raw_eeg_data
 from eeg.inverseproblem.simultaneous_eeg_fmri._fmri_data import get_bv_fmri_data
 
-#root_dir = "/root/DS116/"
-root_dir = "/Users/thomasrialan/Documents/code"
+root_dir = "/root/DS116/"
+#root_dir = "/Users/thomasrialan/Documents/code"
 
 
 if __name__ == '__main__':

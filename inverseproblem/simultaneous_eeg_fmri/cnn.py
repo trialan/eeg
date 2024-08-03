@@ -189,7 +189,7 @@ if __name__ == "__main__":
     from eeg.utils import read_pickle, write_pickle
     from eeg.inverseproblem.simultaneous_eeg_fmri._fmri_data import get_raw_fmri_data, get_bv_fmri_data
 
-    X, y = get_bv_fmri_data("/root/DS116/")
+    X, y = get_bv_fmri_data("/root")
     write_pickle(X, "fmri_bv_X.pkl")
     write_pickle(y, "fmri_bv_y.pkl")
     model = FMRI_CNN()

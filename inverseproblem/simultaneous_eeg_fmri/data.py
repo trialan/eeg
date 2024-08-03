@@ -3,7 +3,7 @@ import torch
 import random
 from sklearn.utils import resample
 
-balanced_length = 1916
+balanced_length = 2066
 
 def seed_everything(seed=42):
     random.seed(seed)

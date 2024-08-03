@@ -186,13 +186,13 @@ if __name__ == "__main__":
     from eeg.utils import read_pickle, write_pickle
     from eeg.inverseproblem.simultaneous_eeg_fmri._fmri_data import get_raw_fmri_data
 
-    X, y = get_raw_fmri_data("/root/DS116/")
-    write_pickle(X, "fmri_X.pkl")
-    write_pickle(y, "fmri_y.pkl")
+    #X, y = get_raw_fmri_data("/root/DS116/")
+    #write_pickle(X, "fmri_X.pkl")
+    #write_pickle(y, "fmri_y.pkl")
     model = FMRI_CNN()
     criterion = nn.BCELoss()
-    # X = read_pickle("fmri_X.pkl")
-    # y = read_pickle("fmri_y.pkl")
+    X = read_pickle("fmri_X.pkl")
+    y = read_pickle("fmri_y.pkl")
     Xb, yb = balance_and_shuffle(X, y)
     cv = get_cv()
     train_cv(FMRI_CNN, Xb, yb, cv)

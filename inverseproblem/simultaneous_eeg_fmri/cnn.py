@@ -14,7 +14,7 @@ from torch.utils.data import TensorDataset, DataLoader
 
 
 seed_everything()
-
+#(2218, 56, 69, 56)
 
 class FMRI_CNN(nn.Module):
     def __init__(self):
@@ -38,6 +38,28 @@ class FMRI_CNN(nn.Module):
         x = self.fc2(x)
         return torch.sigmoid(x)
 
+
+class BV_FMRI_CNN(nn.Module):
+    def __init__(self):
+        super(FMRI_CNN, self).__init__()
+        self.conv1 = nn.Conv3d(1, 32, kernel_size=3, padding=1)
+        self.pool = nn.MaxPool3d(kernel_size=2, stride=2)
+        self.conv2 = nn.Conv3d(32, 64, kernel_size=3, padding=1)
+        self.conv3 = nn.Conv3d(64, 64, kernel_size=3, padding=1)
+        self.fc1 = nn.Linear(64 * 7 * 7 * 7, 64)
+        self.fc2 = nn.Linear(64, 1)
+        self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(0.5)
+
+    def forward(self, x):
+        x = self.pool(self.relu(self.conv1(x)))
+        x = self.pool(self.relu(self.conv2(x)))
+        x = self.pool(self.relu(self.conv3(x)))
+        x = x.view(-1, 64 * 8 * 8 * 4)
+        x = self.relu(self.fc1(x))
+        x = self.dropout(x)
+        x = self.fc2(x)
+        return torch.sigmoid(x)
 
 def train(model, X, y, epochs=50, batch_size=32, seed=42, val_size=0.2):
     # Set seed for reproducibility
@@ -113,9 +135,6 @@ def train_cv(model_class, X, y, cv, epochs=15, batch_size=32, seed=42, val_size=
     scores = []
     for fold, (train_idx, val_idx) in enumerate(cv.split(X, y), 1):
         print(f"Fold {fold}")
-        if fold == 1:
-            print("Top score was 88%")
-            continue
         X_train, X_val = X[train_idx], X[val_idx]
         y_train, y_val = y[train_idx], y[val_idx]
 
@@ -190,9 +209,7 @@ if __name__ == "__main__":
     from eeg.inverseproblem.simultaneous_eeg_fmri._fmri_data import get_raw_fmri_data, get_bv_fmri_data
 
     X, y = get_bv_fmri_data("/root")
-    write_pickle(X, "fmri_bv_X.pkl")
-    write_pickle(y, "fmri_bv_y.pkl")
-    model = FMRI_CNN()
+    model = BV_FMRI_CNN()
     criterion = nn.BCELoss()
     #X = read_pickle("fmri_X.pkl")
     #y = read_pickle("fmri_y.pkl")

@@ -1,22 +1,10 @@
 import numpy as np
 import tensorly as tl
 from tensorly.decomposition import tucker
+from sklearn.feature_selection import mutual_info_classif
+
 
 def tucker_decompose_dataset(X, ranks=(None, None, None)):
-    """
-    Perform Tucker decomposition on a dataset of fMRI images.
-
-    Parameters:
-    X : numpy array of shape (N, 64, 64, 32)
-        The fMRI dataset with N samples
-    ranks : tuple of 3 integers or None
-        The ranks for each mode of the Tucker decomposition.
-        If None, the rank will be automatically determined.
-
-    Returns:
-    X_decomposed : numpy array of shape (N, p, q, r)
-        The dataset after Tucker decomposition
-    """
     tl.set_backend('numpy')
     N, height, width, depth = X.shape
     decomposed_samples = []
@@ -26,5 +14,27 @@ def tucker_decompose_dataset(X, ranks=(None, None, None)):
         decomposed_samples.append(core)
     X_decomposed = np.stack(decomposed_samples)
     return X_decomposed
+
+
+def keep_top_MI_voxels(X, y, N):
+    top_voxels = _select_top_voxels(X, y, N)
+    mask = create_voxel_mask(top_voxels)
+    X_masked = X * mask[np.newaxis, :, :, :]
+    return X_masked
+
+
+def _select_top_voxels(X, y, N):
+    X_reshaped = X.reshape(X.shape[0], -1)
+    mi_scores = mutual_info_classif(X_reshaped, y)
+    mi_scores_3d = mi_scores.reshape(64, 64, 32)
+    top_indices = np.argpartition(mi_scores_3d.ravel(), -N)[-N:]
+    indices = np.array(np.unravel_index(top_indices, (64, 64, 32))).T
+    return indices
+
+
+def _create_voxel_mask(top_voxels, shape=(64, 64, 32)):
+    mask = np.zeros(shape, dtype=bool)
+    mask[top_voxels[:, 0], top_voxels[:, 1], top_voxels[:, 2]] = True
+    return mask
 
 

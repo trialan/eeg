@@ -219,12 +219,12 @@ if __name__ == "__main__":
     #write_pickle(y, "fmri_reststatenorm_y.pkl")
     X = read_pickle("fmri_X.pkl")
     y = read_pickle("fmri_y.pkl")
-    from eeg.inverseproblem.simultaneous_eeg_fmri.feature_selection import tucker_decompose_dataset
+    from eeg.inverseproblem.simultaneous_eeg_fmri.feature_selection import tucker_decompose_dataset, keep_top_MI_voxels
     Xb, yb = balance_and_shuffle(X, y)
-    Xt = tucker_decompose_dataset(X, ranks=(32, 32, 16))
+    Xmi = keep_top_MI_voxels(Xb, yb, 10000)
     cv = get_cv()
     #train_cv(FMRI_CNN, Xb, yb, cv)
     model = FMRI_CNN()
-    train(model, Xt, yb)
+    train(model, Xmi, yb)
 
 

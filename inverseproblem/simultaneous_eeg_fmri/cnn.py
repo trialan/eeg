@@ -213,16 +213,18 @@ if __name__ == "__main__":
     from eeg.utils import read_pickle, write_pickle
     from eeg.inverseproblem.simultaneous_eeg_fmri._fmri_data import get_raw_fmri_data, get_bv_fmri_data
 
-    X, y = get_raw_fmri_data("/root")
+    #X, y = get_raw_fmri_data("/root")
     criterion = nn.BCELoss()
-    write_pickle(X, "fmri_reststatenorm_X.pkl")
-    write_pickle(y, "fmri_reststatenorm_y.pkl")
-    #X = read_pickle("fmri_X.pkl")
-    #y = read_pickle("fmri_y.pkl")
+    #write_pickle(X, "fmri_reststatenorm_X.pkl")
+    #write_pickle(y, "fmri_reststatenorm_y.pkl")
+    X = read_pickle("fmri_X.pkl")
+    y = read_pickle("fmri_y.pkl")
+    from eeg.inverseproblem.simultaneous_eeg_fmri.feature_selection import tucker_decompose_dataset
     Xb, yb = balance_and_shuffle(X, y)
+    Xt = tucker_decompose_dataset(X, ranks=(32, 32, 16))
     cv = get_cv()
     #train_cv(FMRI_CNN, Xb, yb, cv)
     model = FMRI_CNN()
-    # train(model, Xb, yb)
+    train(model, Xt, yb)
 
 

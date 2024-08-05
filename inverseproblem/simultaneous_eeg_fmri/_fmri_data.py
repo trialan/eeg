@@ -68,7 +68,7 @@ def load_bv_file(path):
 
 def get_raw_fmri_data(root_dir):
     bold_paths, _, event_paths = get_DS116_paths(root_dir)
-    slice_order = np.loadtxt(root_dir + "DS116/ds116_metadata/supplementary/slice_order.txt")
+    slice_order = np.loadtxt(os.path.join(root_dir, "DS116/ds116_metadata/supplementary/slice_order.txt"))
     Xs = []
     ys = []
     for bp, ep in tqdm(list(zip(bold_paths, event_paths))):

@@ -112,11 +112,11 @@ def preprocess_fmri(fmri_data, tr, slice_order):
     fmri_data_highpass = clean_img(
         nib.Nifti1Image(fmri_data, affine=np.eye(4)), high_pass=0.01, t_r=tr
     ).get_fdata()
-    fmri_data_smoothed = gaussian_filter(fmri_data_highpass, sigma=(1.5, 1.5, 1.5, 0))
+    fmri_data_smoothed = gaussian_filter(fmri_data_highpass, sigma=(2.5, 2.5, 2.5, 0))
+                                        #,sigma=(1.5, 1.5, 1.5, 0))
     fmri_data_reshaped = np.transpose(fmri_data_smoothed, (1, 2, 3, 0))
-    #fmri_data_stc = slice_timing_correction(fmri_data_reshaped, slice_order, tr)
-    #be careful to return fmri_data_stc when you change this
-    return np.transpose(fmri_data_reshaped, (3, 0, 1, 2))
+    fmri_data_stc = slice_timing_correction(fmri_data_reshaped, slice_order, tr)
+    return np.transpose(fmri_data_stc, (3, 0, 1, 2))
 
 
 def slice_timing_correction(fmri_data, slice_order, tr):

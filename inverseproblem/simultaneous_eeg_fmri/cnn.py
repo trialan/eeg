@@ -213,7 +213,7 @@ if __name__ == "__main__":
     from eeg.utils import read_pickle, write_pickle
     from eeg.inverseproblem.simultaneous_eeg_fmri._fmri_data import get_raw_fmri_data, get_bv_fmri_data
 
-    X, y = get_bv_fmri_data("/root")
+    X, y = get_raw_fmri_data("/root")
     criterion = nn.BCELoss()
     #write_pickle(X, "fmri_bvp_X.pkl")
     #write_pickle(y, "fmri_bvp_y.pkl")

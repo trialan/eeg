@@ -215,11 +215,14 @@ if __name__ == "__main__":
 
     X, y = get_raw_fmri_data("/root")
     criterion = nn.BCELoss()
-    #write_pickle(X, "fmri_bvp_X.pkl")
-    #write_pickle(y, "fmri_bvp_y.pkl")
+    write_pickle(X, "fmri_reststatenorm_X.pkl")
+    write_pickle(y, "fmri_reststatenorm_y.pkl")
     #X = read_pickle("fmri_X.pkl")
     #y = read_pickle("fmri_y.pkl")
     Xb, yb = balance_and_shuffle(X, y)
     cv = get_cv()
-    train_cv(FMRI_CNN, Xb, yb, cv)
+    #train_cv(FMRI_CNN, Xb, yb, cv)
+    model = FMRI_CNN()
     # train(model, Xb, yb)
+
+

@@ -39,7 +39,7 @@ if __name__ == '__main__':
     paradigm = LeftRightImagery()
     evecs, _ = compute_scalp_eigenvectors_and_values()
 
-    pipelines["Eigen-FgMDM"] = make_pipeline(Covariances("oas"), FgMDM())
+    pipelines["Eigen-FgMDM"] = make_pipeline(EigenDecomp(evecs, 22), Covariances("oas"), FgMDM())
 
     datasets = [dataset]
     overwrite = True

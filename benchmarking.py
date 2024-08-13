@@ -63,6 +63,9 @@ if __name__ == '__main__':
     x = list(range(3, 64))
     plt.plot(x, scores)
     plt.savefig("eigen_fgmdm_range.png")
+    print(max(scores))
+    print(np.argmax(scores))
+    print(x[np.argmax(scores)])
 
     """
     Result: 0.720683 (0.017255) -- this is SoTA on Aug. 12th, 2024.

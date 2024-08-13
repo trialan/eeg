@@ -38,21 +38,31 @@ if __name__ == '__main__':
     dataset = PhysionetMI()
     paradigm = LeftRightImagery()
     evecs, _ = compute_scalp_eigenvectors_and_values()
-
-    pipelines["Eigen-FgMDM"] = make_pipeline(EigenDecomp(evecs, 22), Covariances("oas"), FgMDM())
-
     datasets = [dataset]
     overwrite = True
     evaluation = WithinSessionEvaluation(
         paradigm=paradigm, datasets=datasets, suffix="examples", overwrite=overwrite
     )
 
-    results = evaluation.process(pipelines)
-    score = results.groupby("pipeline").score.mean()
-    std_err = results.groupby("pipeline").score.sem()
+    scores = []
+    std_errs = []
+    for n_evecs in range(3,64):
+        pipelines["Eigen-FgMDM"] = make_pipeline(EigenDecomp(evecs, n_evecs), Covariances("oas"), FgMDM())
 
-    print(score.iloc[0])
-    print(std_err.iloc[0])
+        results = evaluation.process(pipelines)
+        score = results.groupby("pipeline").score.mean()
+        std_err = results.groupby("pipeline").score.sem()
+
+        print(n_evecs)
+        scores.append(score.iloc[0])
+        print(score.iloc[0])
+        std_errs.append(std_err.iloc[0])
+        print(std_err.iloc[0])
+        print("##########")
+
+    x = list(range(3, 64))
+    plt.plot(x, scores)
+    plt.savefig("eigen_fgmdm_range.png")
 
     """
     Result: 0.720683 (0.017255) -- this is SoTA on Aug. 12th, 2024.

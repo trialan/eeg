@@ -32,8 +32,6 @@ filelock==3.15.4
 fonttools==4.53.0
 frozenlist==1.4.1
 fsspec==2024.6.1
-giotto-ph==0.2.4
-giotto-tda==0.6.2
 gurobipy==11.0.3
 h5py==3.11.0
 idna==3.7

@@ -18,6 +18,10 @@ pipelines = {}
 from eeg.experiments.eigen_fgmdm import OldED
 from eeg.laplacian import compute_scalp_eigenvectors_and_values
 
+from moabb.utils import set_download_dir
+scratch_dir = "/anvil/scratch/x-trialan"
+set_download_dir(scratch_dir)
+
 
 class EigenDecomp(BaseEstimator, TransformerMixin):
     def __init__(self, eigenvecs, n_components):

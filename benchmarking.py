@@ -1,7 +1,7 @@
 import moabb
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
-from moabb.datasets import PhysionetMI, Shin2017A
+from moabb.datasets import PhysionetMI, Shin2017A, AlexMI
 from moabb.evaluations import WithinSessionEvaluation
 from moabb.paradigms import LeftRightImagery, MotorImagery
 from pyriemann.spatialfilters import CSP
@@ -38,8 +38,8 @@ class EigenDecomp(BaseEstimator, TransformerMixin):
 
 
 if __name__ == '__main__':
-    dataset = Shin2017A(accept=True)
-    paradigm = LeftRightImagery()
+    dataset = AlexMI()
+    paradigm = MotorImagery()
     evecs, _ = compute_scalp_eigenvectors_and_values()
     datasets = [dataset]
     overwrite = True
@@ -47,12 +47,22 @@ if __name__ == '__main__':
         paradigm=paradigm, datasets=datasets, suffix="examples", overwrite=overwrite
     )
 
+    pipelines["FgMDM"] = make_pipeline(Covariances("oas"), FgMDM())
+
+    results = evaluation.process(pipelines)
+    score = results.groupby("pipeline").score.mean()
+    std_err = results.groupby("pipeline").score.sem()
+
+    print(score.iloc[0])
+    print(std_err.iloc[0])
+    print("##########")
+
     scores = []
     std_errs = []
-    x_vals = list(range(3,30))
+    x_vals = list(range(3,16))
     for n_evecs in x_vals:
-        #pick only first 30 for Shin2017A dataset
-        pipelines["Eigen-FgMDM"] = make_pipeline(EigenDecomp(evecs[:30], n_evecs), Covariances("oas"), FgMDM())
+        #pick only first 30 for Shin2017A dataset, 16 for AlexMI
+        pipelines["Eigen-FgMDM"] = make_pipeline(EigenDecomp(evecs[:16], n_evecs), Covariances("oas"), FgMDM())
 
         results = evaluation.process(pipelines)
         score = results.groupby("pipeline").score.mean()

@@ -34,7 +34,7 @@ class EigenDecomp(BaseEstimator, TransformerMixin):
 
 
 if __name__ == '__main__':
-    dataset = Shin2017A()
+    dataset = Shin2017A(accept=True)
     paradigm = LeftRightImagery()
     evecs, _ = compute_scalp_eigenvectors_and_values()
     datasets = [dataset]

@@ -47,7 +47,8 @@ if __name__ == '__main__':
     std_errs = []
     x_vals = list(range(3,30))
     for n_evecs in x_vals:
-        pipelines["Eigen-FgMDM"] = make_pipeline(EigenDecomp(evecs, n_evecs), Covariances("oas"), FgMDM())
+        #pick only first 30 for Shin2017A dataset
+        pipelines["Eigen-FgMDM"] = make_pipeline(EigenDecomp(evecs[:30], n_evecs), Covariances("oas"), FgMDM())
 
         results = evaluation.process(pipelines)
         score = results.groupby("pipeline").score.mean()

@@ -18,7 +18,7 @@ from eeg.laplacian import compute_scalp_eigenvectors_and_values
 
 from moabb.utils import set_download_dir
 scratch_dir = "/anvil/scratch/x-trialan"
-set_download_dir(scratch_dir)
+#set_download_dir(scratch_dir)
 
 
 class EigenDecomp(BaseEstimator, TransformerMixin):
@@ -46,7 +46,7 @@ if __name__ == '__main__':
     )
 
     #pipelines["FgMDM"] = make_pipeline(EigenDecomp(evecs, 20), Covariances("oas"), FgMDM())
-    pipelines["pipe"] = make_pipeline(TangentSpace(metric="riemann"), LogisticRegression())
+    pipelines["pipe"] = make_pipeline(Covariances("oas"), TangentSpace(metric="riemann"), LogisticRegression())
 
     results = evaluation.process(pipelines)
     score = results.groupby("pipeline").score.mean()

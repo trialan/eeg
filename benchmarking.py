@@ -1,18 +1,16 @@
-import moabb
 import numpy as np
-from sklearn.base import BaseEstimator, TransformerMixin
+import moabb
 from moabb.datasets import PhysionetMI, Shin2017A, AlexMI
 from moabb.evaluations import WithinSessionEvaluation
 from moabb.paradigms import LeftRightImagery, MotorImagery
-from pyriemann.spatialfilters import CSP
 from pyriemann.estimation import Covariances
 from pyriemann.classification import FgMDM
+from pyriemann.tangentspace import TangentSpace
+from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.pipeline import make_pipeline
-
+from sklearn.linear_model import LogisticRegression
 from eeg.utils import get_cv, avg_power_vector
 
-
-moabb.set_log_level("error")
 pipelines = {}
 
 from eeg.experiments.eigen_fgmdm import OldED
@@ -38,8 +36,8 @@ class EigenDecomp(BaseEstimator, TransformerMixin):
 
 
 if __name__ == '__main__':
-    dataset = AlexMI()
-    paradigm = MotorImagery()
+    dataset = PhysionetMI()
+    paradigm = LeftRightImagery()
     evecs, _ = compute_scalp_eigenvectors_and_values()
     datasets = [dataset]
     overwrite = True
@@ -47,7 +45,8 @@ if __name__ == '__main__':
         paradigm=paradigm, datasets=datasets, suffix="examples", overwrite=overwrite
     )
 
-    pipelines["FgMDM"] = make_pipeline(Covariances("oas"), FgMDM())
+    #pipelines["FgMDM"] = make_pipeline(EigenDecomp(evecs, 20), Covariances("oas"), FgMDM())
+    pipelines["pipe"] = make_pipeline(TangentSpace(metric="riemann"), LogisticRegression())
 
     results = evaluation.process(pipelines)
     score = results.groupby("pipeline").score.mean()
@@ -57,36 +56,10 @@ if __name__ == '__main__':
     print(std_err.iloc[0])
     print("##########")
 
-    scores = []
-    std_errs = []
-    x_vals = list(range(3,16))
-    for n_evecs in x_vals:
-        #pick only first 30 for Shin2017A dataset, 16 for AlexMI
-        pipelines["Eigen-FgMDM"] = make_pipeline(EigenDecomp(evecs[:16], n_evecs), Covariances("oas"), FgMDM())
-
-        results = evaluation.process(pipelines)
-        score = results.groupby("pipeline").score.mean()
-        std_err = results.groupby("pipeline").score.sem()
-
-        print(n_evecs)
-        scores.append(score.iloc[0])
-        print(score.iloc[0])
-        std_errs.append(std_err.iloc[0])
-        print(std_err.iloc[0])
-        print("##########")
-
-    plt.plot(x_vals, scores)
-    plt.savefig("eigen_fgmdm_range.png")
-    print(max(scores))
-    print(np.argmax(scores))
-    print(x[np.argmax(scores)])
-
     """
     PhysionetMI
     Result: 0.720683 (0.017255) -- this is SoTA on Aug. 12th, 2024.
     Benchmark: 0.6887513 (0.0179015) -- this is FgMDM
-
-    Shin2017A
     """
 
 

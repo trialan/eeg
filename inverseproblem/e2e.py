@@ -60,7 +60,6 @@ def get_subject_J(subject):
     )
     y = epochs.events[:, -1] - 2
     J = np.array([stc.data for stc in stcs])
-    import pdb;pdb.set_trace() 
     del noise_cov
     del inverse_operator
     del epochs

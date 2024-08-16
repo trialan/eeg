@@ -10,7 +10,7 @@ from eeg import physionet_runs
 from eeg.data import get_raw_data, tmax, tmin, get_data
 from eeg.utils import results, get_cv, avg_power_matrix
 from eeg.inverseproblem.leadfield import compute_forward_solution
-from eeg.plot_reproduction import assemble_classifer_CSPLDA
+from eeg.plot_reproduction import assemble_classifier_CSPLDA
 
 method = "eLORETA"
 snr = 3.0 #why??
@@ -78,7 +78,7 @@ if __name__ == '__main__':
     fwd = compute_forward_solution()
     J, y = get_J_y()
     cv = get_cv()
-    clf = assemble_classifer_CSPLDA(30)
+    clf = assemble_classifier_CSPLDA(30)
     J_score = results(clf, J, y, cv) 
     print(f"CSP+LDA on J: {J_score}")
 

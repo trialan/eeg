@@ -75,11 +75,11 @@ CSP+LDA (30 components) on X ~ 61.5%
 
 
 if __name__ == '__main__':
-    _, fwd = compute_forward_solution()
-    J, y = get_J_y(3)
-
+    fwd = compute_forward_solution()
+    J, y = get_J_y()
     cv = get_cv()
     clf = assemble_classifer_CSPLDA(30)
     J_score = results(clf, J, y, cv) 
     print(f"CSP+LDA on J: {J_score}")
+
 

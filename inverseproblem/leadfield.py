@@ -3,8 +3,8 @@ import numpy as np
 import pyvista as pv
 import mne
 from scipy.spatial import Delaunay, ConvexHull
-from laplacian import plot_mesh, plot_basis_functions, create_triangular_dmesh, resample_electrode_positions
-from data import get_raw_data
+from eeg.laplacian import plot_mesh, plot_basis_functions, create_triangular_dmesh, resample_electrode_positions
+from eeg.data import get_raw_data
 import spharapy.trimesh as trimesh
 from scipy.interpolate import Rbf, griddata
 from scipy import linalg

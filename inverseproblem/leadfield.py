@@ -292,6 +292,7 @@ def normalize_vertices(vertices):
 
 
 if __name__ == '__main__': 
+    """
     ###Testing and Plotting###
     
     # Get pial surface
@@ -326,18 +327,20 @@ if __name__ == '__main__':
     
     # Plot SpharaPy mesh and source space
     plot_mesh_and_sources(decimated_sphara_mesh, normalize_vertices(src_vertices))
+    """
     
     
     ### Leadfield matrix computation ###
-    #leadfield = compute_lead_field_matrix_()
-    #print("SHAPE:",leadfield.shape)
+    leadfield = compute_lead_field_matrix_()
+    print("SHAPE:",leadfield.shape)
    
 
-    #plot_basis_functions(sp`hara_mesh)
-    #plot_mesh(decimated_sphara_mesh)
-    #subjects_dir = mne.datasets.sample.data_path() / 'subjects'
-    #for i,sphara_mesh in enumerate(sphara_meshes):
-    #    print(f"\n#### SpharaPy Mesh {i+1} ####")
-    #    plot_mesh(sphara_meshes[i])
-    #    plot_basis_functions(sphara_meshes[i])
-
+    """
+    plot_basis_functions(sp`hara_mesh)
+    plot_mesh(decimated_sphara_mesh)
+    subjects_dir = mne.datasets.sample.data_path() / 'subjects'
+    for i,sphara_mesh in enumerate(sphara_meshes):
+        print(f"\n#### SpharaPy Mesh {i+1} ####")
+        plot_mesh(sphara_meshes[i])
+        plot_basis_functions(sphara_meshes[i])
+    """

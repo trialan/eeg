@@ -27,6 +27,7 @@ def get_J_y(n_subjects=109):
 
     homogenous_ixs = [i for i in range(len(J)) if True]#J[i].shape==(474, 161)]
     J_homogenous = [J[i] for i in homogenous_ixs]
+    print(f"SHAPE: {np.array(J_homogenous).shape}")
     y_homogenous = [y[i] for i in homogenous_ixs]
     return np.array(J_homogenous), np.array(y_homogenous)
 

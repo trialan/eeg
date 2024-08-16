@@ -41,7 +41,7 @@ def compute_forward_solution():
                                  add_dist=False,
                                  subjects_dir=subjects_dir)
 
-    fiducials_trans= "phys.fif"
+    fiducials_trans= "/home/x-trialan/eeg/inverseproblem/phys.fif"
     fwd = mne.make_forward_solution(raw.info,
                                     trans=fiducials_trans,
                                     src=src,

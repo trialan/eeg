@@ -73,13 +73,30 @@ LDA on X                     ~ 49%
 CSP+LDA (30 components) on X ~ 61.5%
 """
 
+import random
+
+def generate_tuples(num_tuples):
+    tuples_list = []
+    for _ in range(num_tuples):
+        a = round(random.uniform(0.12, 0.4), 4)
+        b = round(random.uniform(0.01, 0.001), 4)
+        c = round(random.uniform(0.2, 0.4), 4)
+        tuples_list.append((a, b, c))
+    return tuples_list
+
 
 if __name__ == '__main__':
-    fwd = compute_forward_solution()
-    J, y = get_J_y()
-    cv = get_cv()
-    clf = assemble_classifier_CSPLDA(30)
-    J_score = results(clf, J, y, cv) 
-    print(f"CSP+LDA on J: {J_score}")
+    scores = []
+    conductivities = generate_tuples(10)
+    print(conductivities)
+    for cond in conductivities:
+        fwd = compute_forward_solution(cond)
+        J, y = get_J_y()
+        cv = get_cv()
+        clf = assemble_classifier_CSPLDA(30)
+        J_score = results(clf, J, y, cv)
+        print(f"Conductivities: {cond}")
+        print(f"CSP+LDA on J: {J_score}")
+    print(scores)
 
 

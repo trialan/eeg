@@ -9,7 +9,6 @@ import spharapy.trimesh as trimesh
 from scipy.interpolate import Rbf, griddata
 from scipy import linalg
 from mpl_toolkits.mplot3d import Axes3D
-import nibabel as nib
 from mne.transforms import apply_trans
 physionet_runs = [6,10,14]
 
@@ -49,7 +48,7 @@ def compute_forward_solution():
                                     meg=False,
                                     eeg=True,
                                     mindist=5.0,
-                                    n_jobs=1)
+                                    n_jobs=-1)
     
     print("\n#### Forward Solution Computed ####\n")
     return fwd

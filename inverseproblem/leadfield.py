@@ -25,11 +25,10 @@ def compute_lead_field_matrix_():
     print("\n#### Lead Field Matrix Computed ####\n")
     return leadfield
 
-def compute_forward_solution():
+def compute_forward_solution(conductivity=(0.3, 0.006, 0.3)):
     raw = get_raw_data(1, physionet_runs)
     subject = "sample"
     subjects_dir = mne.datasets.sample.data_path() / 'subjects'
-    conductivity = (0.3, 0.006, 0.3)
     model = mne.make_bem_model(subject=subject, #is this OK??
                                ico=None,
                                conductivity=conductivity,
